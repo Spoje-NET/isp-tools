@@ -1,0 +1,83 @@
+{
+  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "schemaVersion": "3.2.1",
+  "uuid": "8f3c4a5e-9b2d-4e1f-a6d8-7c9e0f1a2b3c",
+  "version": "1.0.0",
+  "name": {
+    "en": "Block Internet Access",
+    "cs": "Zablokovat přístup k internetu"
+  },
+  "description": {
+    "en": "Block internet access for all clients with ODPOJEN (DISCONNECTED) label",
+    "cs": "Zablokuje internet všem klientům kteří mají štítek ODPOJEN"
+  },
+  "tags": [
+    "AbraFlexi",
+    "ISP",
+    "Network"
+  ],
+  "homepage": "https://github.com/Spoje-NET/isp-tools",
+  "executable": "blocknet",
+  "environment": {
+    "ABRAFLEXI_COMPANY": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Company code",
+        "cs": "Kód společnosti v AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_LOGIN": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Login",
+        "cs": "Přihlašovací jméno do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_PASSWORD": {
+      "type": "password",
+      "description": {
+        "en": "AbraFlexi password",
+        "cs": "Heslo do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_URL": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Server URI",
+        "cs": "Adresa serveru AbraFlexi"
+      },
+      "defval": "https://demo.flexibee.eu:5434",
+      "required": true,
+      "category": "API"
+    },
+    "RESULT_FILE": {
+      "type": "string",
+      "description": {
+        "en": "Write output json data to",
+        "cs": "Zapsat výstupní json data do"
+      },
+      "defval": "blocknet_result.json",
+      "required": false,
+      "category": "Other"
+    },
+    "EASE_LOGGER": {
+      "type": "string",
+      "description": {
+        "en": "Write log messages using",
+        "cs": "Způsob zápisu logovacích zpráv"
+      },
+      "defval": "console|syslog",
+      "required": false,
+      "category": "Behavior"
+    }
+  }
+}
