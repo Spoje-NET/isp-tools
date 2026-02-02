@@ -1,0 +1,36 @@
+{
+  "name": "spojenet/isp-tools",
+  "description": "ISP tools for blocking/unblocking internet access based on AbraFlexi invoices",
+  "version": "1.0.0",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Vítězslav Dvořák",
+      "email": "info@vitexsoftware.cz"
+    }
+  ],
+  "require": {
+    "php": ">=8.1",
+    "vitexsoftware/abraflexi-bricks": "dev-main"
+  },
+  "autoload": {
+    "psr-4": {
+      "SpojeNet\\": "src/SpojeNet"
+    }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "*",
+    "phpstan/phpstan": "*",
+    "friendsofphp/php-cs-fixer": "^3.91",
+    "ergebnis/composer-normalize": "^2.48",
+    "ergebnis/php-cs-fixer-config": "^6.57"
+  },
+  "config": {
+    "allow-plugins": {
+      "ergebnis/composer-normalize": true
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
