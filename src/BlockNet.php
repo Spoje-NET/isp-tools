@@ -37,7 +37,10 @@ $exitcode = 0;
 $destination = \array_key_exists('output', $options) ? $options['output'] : \Ease\Shared::cfg('RESULT_FILE', 'php://stdout');
 
 $deblocker = new \SpojeNet\DeBlocker();
-$deblocker->logBanner();
+
+if (\Ease\Shared::cfg('APP_DEBUG', false)) {
+    $deblocker->logBanner();
+}
 
 $addresses = $deblocker->getBlocked();
 
@@ -68,7 +71,7 @@ foreach ($addresses as $kod => $address) {
     $lmsIDs[$address['kod']] = $address;
 }
 
-$deblocker->blockCustomers(array_values($lmsIDs));
+$deblocker->blockCustomers(array_keys($lmsIDs));
 
 // Generate MultiFlexi-compliant report
 $hasErrors = false;

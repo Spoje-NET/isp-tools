@@ -2,13 +2,24 @@
 
 declare(strict_types=1);
 
+/**
+ * This file is part of the AbraFlexi Reminder package
+ *
+ * https://github.com/SpojeNET/isp-tools
+ *
+ * (c) Spoje.Net <https://spoje.net/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace SpojeNet\tests;
 
 use PHPUnit\Framework\TestCase;
 use SpojeNet\SubVersioner;
 
 /**
- * Test SubVersioner functionality
+ * Test SubVersioner functionality.
  */
 class SubVersionerTest extends TestCase
 {
@@ -17,7 +28,7 @@ class SubVersionerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tempDir = sys_get_temp_dir() . '/isp-tools-test-' . uniqid();
+        $this->tempDir = sys_get_temp_dir().'/isp-tools-test-'.uniqid();
 
         // Backup original environment
         $this->originalEnv = [
@@ -29,12 +40,12 @@ class SubVersionerTest extends TestCase
         ];
 
         // Set test environment to use local repository
-        $repoPath = __DIR__ . '/svn/repo/hoststest';
+        $repoPath = __DIR__.'/svn/repo/hoststest';
         putenv('SVNUSER=testuser');
         putenv('SVNPASS=testpass');
-        putenv('SVNURL=file://' . $repoPath);
+        putenv('SVNURL=file://'.$repoPath);
         putenv('SVNBIN=svn');
-        putenv('LOGFILE=' . $this->tempDir . '/test.log');
+        putenv('LOGFILE='.$this->tempDir.'/test.log');
     }
 
     protected function tearDown(): void
@@ -44,7 +55,7 @@ class SubVersionerTest extends TestCase
             if ($value === false) {
                 putenv($key);
             } else {
-                putenv($key . '=' . $value);
+                putenv($key.'='.$value);
             }
         }
 
@@ -85,7 +96,7 @@ class SubVersionerTest extends TestCase
 
     public function testUnblockIpReturnsBoolean(): void
     {
-        $subversioner = new SubVersioner();
+        $subversioner = new SubVersioner($this->tempDir);
         $result = $subversioner->unblockIp('192.168.1.10', 100);
 
         $this->assertIsBool($result);
@@ -93,7 +104,7 @@ class SubVersionerTest extends TestCase
 
     public function testBlockIpWithInvalidIp(): void
     {
-        $subversioner = new SubVersioner();
+        $subversioner = new SubVersioner($this->tempDir);
         $result = $subversioner->blockIp('invalid-ip');
 
         // Should handle gracefully (mocked SVN command will still return true)
@@ -102,7 +113,7 @@ class SubVersionerTest extends TestCase
 
     public function testUnblockIpWithInvalidIp(): void
     {
-        $subversioner = new SubVersioner();
+        $subversioner = new SubVersioner($this->tempDir);
         $result = $subversioner->unblockIp('invalid-ip', 50);
 
         // Should handle gracefully (mocked SVN command will still return true)
@@ -116,14 +127,17 @@ class SubVersionerTest extends TestCase
         }
 
         $files = array_diff(scandir($dir), ['.', '..']);
+
         foreach ($files as $file) {
-            $path = $dir . '/' . $file;
+            $path = $dir.'/'.$file;
+
             if (is_dir($path)) {
                 $this->removeDirectory($path);
             } else {
                 unlink($path);
             }
         }
+
         rmdir($dir);
     }
 }

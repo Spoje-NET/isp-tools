@@ -2,15 +2,26 @@
 
 declare(strict_types=1);
 
+/**
+ * This file is part of the AbraFlexi Reminder package
+ *
+ * https://github.com/SpojeNET/isp-tools
+ *
+ * (c) Spoje.Net <https://spoje.net/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace SpojeNet\tests;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 use SpojeNet\DeBlocker;
 use SpojeNet\NetworkBackendInterface;
 
 /**
- * Test DeBlocker orchestration
+ * Test DeBlocker orchestration.
  */
 class DeBlockerTest extends TestCase
 {
@@ -28,7 +39,7 @@ class DeBlockerTest extends TestCase
         $customerIps = [
             ['ip' => '192.168.1.10'],
             ['ip' => '192.168.1.20'],
-            ['ip' => '192.168.1.30']
+            ['ip' => '192.168.1.30'],
         ];
 
         $this->mockAdapter->expects($this->exactly(3))
@@ -44,7 +55,7 @@ class DeBlockerTest extends TestCase
     {
         $customerIps = [
             ['ip' => '192.168.1.10', 'speed' => 100],
-            ['ip' => '192.168.1.20', 'speed' => 50]
+            ['ip' => '192.168.1.20', 'speed' => 50],
         ];
 
         $this->mockAdapter->expects($this->exactly(2))
@@ -60,7 +71,7 @@ class DeBlockerTest extends TestCase
     {
         $customerIps = [
             ['ip' => '192.168.1.10'],
-            ['ip' => '192.168.1.20']
+            ['ip' => '192.168.1.20'],
         ];
 
         $this->mockAdapter->expects($this->exactly(2))
@@ -76,7 +87,7 @@ class DeBlockerTest extends TestCase
     {
         $customerIps = [
             ['ip' => '192.168.1.10', 'speed' => 100],
-            ['ip' => '192.168.1.20', 'speed' => 50]
+            ['ip' => '192.168.1.20', 'speed' => 50],
         ];
 
         $this->mockAdapter->expects($this->exactly(2))

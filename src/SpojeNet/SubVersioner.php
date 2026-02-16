@@ -29,6 +29,20 @@ class SubVersioner implements NetworkBackendInterface
     private ?string $logFile;
     private string $tempDir;
     private string $repoName = 'hostsbrevnov';
+    /**
+     * Tracks which tempDirs have been checked out in this process.
+     * Keyed by tempDir path.
+     *
+     * @var array<string,bool>
+     */
+    private static array $repoCheckedOutPaths = [];
+
+    /**
+     * Tracks which tempDirs have been cleaned up.
+     *
+     * @var array<string,bool>
+     */
+    private static array $repoCleanedPaths = [];
 
     public function __construct(?string $workingDir = null)
     {
@@ -53,47 +67,48 @@ class SubVersioner implements NetworkBackendInterface
         try {
             $this->log('block requested for IP '.$ip);
             $this->checkoutRepo();
-        $hostsFile = $this->tempDir.'/hosts';
-        $tempFile = $this->tempDir.'/tmpnewhosts';
-        $newContent = '';
+            $hostsFile = $this->tempDir.'/hosts';
+            $tempFile = $this->tempDir.'/tmpnewhosts';
+            $newContent = '';
 
-        $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES);
+            $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES);
 
-        foreach ($lines as $line) {
-            $keep = true;
+            foreach ($lines as $line) {
+                $keep = true;
 
-            if ($line[0] !== '#') {
-                $fields = explode("\t", $line);
+                if ($line[0] !== '#') {
+                    $fields = explode("\t", $line);
 
-                if (\count($fields) > 0 && trim($fields[0]) === $ip) {
-                    $commentParts = explode('#', $line);
+                    if (\count($fields) > 0 && trim($fields[0]) === $ip) {
+                        $commentParts = explode('#', $line);
 
-                    if (\count($commentParts) > 1) {
-                        // Modify comment to speed=0, remove dashboard parts
-                        $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
-                        $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
-                        $modifiedComment = trim($modifiedComment);
-                        $newLine = $commentParts[0].'# speed=0'.$modifiedComment;
-                        $newContent .= $newLine."\n";
-                        $keep = false;
+                        if (\count($commentParts) > 1) {
+                            // Modify comment to speed=0, remove dashboard parts
+                            $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
+                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
+                            $modifiedComment = trim($modifiedComment);
+                            $newLine = $commentParts[0].'# speed=0'.$modifiedComment;
+                            $newContent .= $newLine."\n";
+                            $keep = false;
+                        }
                     }
+                }
+
+                if ($keep) {
+                    $newContent .= $line."\n";
                 }
             }
 
-            if ($keep) {
-                $newContent .= $line."\n";
-            }
-        }
-
-        file_put_contents($tempFile, $newContent);
-        unlink($hostsFile);
-        rename($tempFile, $hostsFile);
-        $this->commitRepo('Auto-block-IP-'.$ip);
-        $this->cleanup();
+            file_put_contents($tempFile, $newContent);
+            unlink($hostsFile);
+            rename($tempFile, $hostsFile);
+            $this->commitRepo('Auto-block-IP-'.$ip);
         } catch (\Exception $e) {
-            $this->log('Error blocking IP: ' . $e->getMessage());
+            $this->log('Error blocking IP: '.$e->getMessage());
+
             return false;
         }
+
         return true;
     }
 
@@ -103,50 +118,116 @@ class SubVersioner implements NetworkBackendInterface
     public function unblockIp(string $ip, int $speed): bool
     {
         try {
-        $this->log('unblock requested for IP '.$ip.' to speed '.$speed);
-        $this->checkoutRepo();
-        $hostsFile = $this->tempDir.'/hosts';
-        $tempFile = $this->tempDir.'/tmpnewhosts';
-        $newContent = '';
+            $this->log('unblock requested for IP '.$ip.' to speed '.$speed);
+            $this->checkoutRepo();
+            $hostsFile = $this->tempDir.'/hosts';
+            $tempFile = $this->tempDir.'/tmpnewhosts';
+            $newContent = '';
 
-        $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES);
+            $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES);
 
-        foreach ($lines as $line) {
-            $keep = true;
+            foreach ($lines as $line) {
+                $keep = true;
 
-            if ($line[0] !== '#') {
-                $fields = explode("\t", $line);
+                if ($line[0] !== '#') {
+                    $fields = explode("\t", $line);
 
-                if (\count($fields) > 0 && trim($fields[0]) === $ip) {
-                    $commentParts = explode('#', $line);
+                    if (\count($fields) > 0 && trim($fields[0]) === $ip) {
+                        $commentParts = explode('#', $line);
 
-                    if (\count($commentParts) > 1) {
-                        // Modify comment to speed=$speed, remove dashboard parts
-                        $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
-                        $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
-                        $modifiedComment = trim($modifiedComment);
-                        $newLine = $commentParts[0].'# speed='.$speed.$modifiedComment;
-                        $newContent .= $newLine."\n";
-                        $keep = false;
+                        if (\count($commentParts) > 1) {
+                            // Modify comment to speed=$speed, remove dashboard parts
+                            $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
+                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
+                            $modifiedComment = trim($modifiedComment);
+                            $newLine = $commentParts[0].'# speed='.$speed.$modifiedComment;
+                            $newContent .= $newLine."\n";
+                            $keep = false;
+                        }
+                    }
+                }
+
+                if ($keep) {
+                    $newContent .= $line."\n";
+                }
+            }
+
+            file_put_contents($tempFile, $newContent);
+            unlink($hostsFile);
+            rename($tempFile, $hostsFile);
+            $this->commitRepo('Auto-unblock-IP-'.$ip);
+        } catch (\Exception $e) {
+            $this->log('Error unblocking IP: '.$e->getMessage());
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Obtain list of customer's IP addresses from hosts file.
+     *
+     * This simple implementation checks the checked-out hosts file for
+     * occurrences of the given customer code in the line (usually present
+     * in the comment) and returns found IPs.
+     *
+     * @param string $code Customer identifier or code to search for
+     *
+     * @return array Array of IP strings (may be empty)
+     */
+    public function getCustomerIPs(string $code): array
+    {
+        $ips = [];
+
+        try {
+            $this->checkoutRepo();
+
+            $hostsFile = $this->tempDir.'/hosts';
+
+            if (!is_readable($hostsFile)) {
+                $this->log('Hosts file not readable: '.$hostsFile);
+                $this->cleanup();
+
+                return $ips;
+            }
+
+            $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
+
+            foreach ($lines as $line) {
+                // Skip commented-out host definitions
+                if (\strlen($line) < 2 || $line[0] === '#') {
+                    // but still consider commented lines if they contain the code
+                    if (str_contains($line, $code)) {
+                        // extract ip if present before comment
+                        $parts = explode('#', $line, 2);
+                        $fields = preg_split('/\s+|\t+/', trim($parts[0]));
+                        if (isset($fields[0]) && filter_var($fields[0], FILTER_VALIDATE_IP)) {
+                            $ips[] = $fields[0];
+                        }
+                    }
+
+                    continue;
+                }
+
+                // If line contains the customer code (possibly in comment), extract IP
+                if (str_contains($line, $code)) {
+                    $parts = explode('#', $line, 2);
+                    $fields = preg_split('/\s+|\t+/', trim($parts[0]));
+
+                    if (isset($fields[0]) && filter_var($fields[0], FILTER_VALIDATE_IP)) {
+                        $ips[] = $fields[0];
                     }
                 }
             }
 
-            if ($keep) {
-                $newContent .= $line."\n";
-            }
+            $this->cleanup();
+        } catch (\Exception $e) {
+            $this->log('Error gathering customer IPs: '.$e->getMessage());
         }
 
-        file_put_contents($tempFile, $newContent);
-        unlink($hostsFile);
-        rename($tempFile, $hostsFile);
-        $this->commitRepo('Auto-unblock-IP-'.$ip);
-        $this->cleanup();
-        } catch (\Exception $e) {
-            $this->log('Error unblocking IP: ' . $e->getMessage());
-            return false;
-        }
-        return true;
+        // Remove duplicates and return
+        return array_values(array_unique($ips));
     }
 
     /**
@@ -234,11 +315,15 @@ class SubVersioner implements NetworkBackendInterface
 
     private function checkoutRepo(): void
     {
-        $workingDir = dirname($this->tempDir);
+        if (!empty(self::$repoCheckedOutPaths[$this->tempDir])) {
+            return;
+        }
+
+        $workingDir = \dirname($this->tempDir);
         $repoDir = basename($this->tempDir);
 
         if (!is_dir($workingDir)) {
-            mkdir($workingDir, 0755, true);
+            mkdir($workingDir, 0o755, true);
         }
 
         chdir($workingDir);
@@ -246,11 +331,13 @@ class SubVersioner implements NetworkBackendInterface
 
         $cmd = sprintf('%s co --username %s --password %s %s %s', $this->svnBin, $this->svnUser, $this->svnPass, $this->svnUrl, $repoDir);
         exec($cmd);
+
+        self::$repoCheckedOutPaths[$this->tempDir] = true;
     }
 
     private function commitRepo(string $message): void
     {
-        $workingDir = dirname($this->tempDir);
+        $workingDir = \dirname($this->tempDir);
         $repoDir = basename($this->tempDir);
 
         chdir($workingDir);
@@ -260,7 +347,19 @@ class SubVersioner implements NetworkBackendInterface
 
     private function cleanup(): void
     {
+        if (!empty(self::$repoCleanedPaths[$this->tempDir])) {
+            return;
+        }
+
         $this->rmdirRecursive($this->tempDir);
+        self::$repoCleanedPaths[$this->tempDir] = true;
+        unset(self::$repoCheckedOutPaths[$this->tempDir]);
+    }
+
+    public function __destruct()
+    {
+        // Ensure repository is cleaned up once when object is destroyed
+        $this->cleanup();
     }
 
     private function log(string $message): void

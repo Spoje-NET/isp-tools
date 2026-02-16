@@ -2,13 +2,24 @@
 
 declare(strict_types=1);
 
+/**
+ * This file is part of the AbraFlexi Reminder package
+ *
+ * https://github.com/SpojeNET/isp-tools
+ *
+ * (c) Spoje.Net <https://spoje.net/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace SpojeNet\tests;
 
 use PHPUnit\Framework\TestCase;
 use SpojeNet\NetBoxer;
 
 /**
- * Test NetBoxer functionality
+ * Test NetBoxer functionality.
  */
 class NetBoxerTest extends TestCase
 {
@@ -34,7 +45,7 @@ class NetBoxerTest extends TestCase
             if ($value === false) {
                 putenv($key);
             } else {
-                putenv($key . '=' . $value);
+                putenv($key.'='.$value);
             }
         }
     }

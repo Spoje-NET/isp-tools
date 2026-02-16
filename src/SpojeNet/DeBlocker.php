@@ -25,7 +25,7 @@ class DeBlocker extends \Ease\Sand
     private \AbraFlexi\Bricks\Customer $customer;
     private NetworkBackendInterface $adapter;
 
-    public function __construct(NetworkBackendInterface $adapter = null)
+    public function __construct(?NetworkBackendInterface $adapter = null)
     {
         $this->setObjectName('Deblocker');
         $this->customer = new \AbraFlexi\Bricks\Customer();
@@ -47,14 +47,19 @@ class DeBlocker extends \Ease\Sand
     public function blockCustomers(array $customers): bool
     {
         $allSuccessful = true;
+
         foreach ($customers as $customer) {
+            $this->adapter->getCustomerIPs($customer);
+
             if (isset($customer['ip'])) {
                 $result = $this->adapter->blockIp($customer['ip']);
+
                 if (!$result) {
                     $allSuccessful = false;
                 }
             }
         }
+
         return $allSuccessful;
     }
 
@@ -64,14 +69,17 @@ class DeBlocker extends \Ease\Sand
     public function unblockCustomers(array $customers): bool
     {
         $allSuccessful = true;
+
         foreach ($customers as $customer) {
             if (isset($customer['ip'], $customer['speed'])) {
                 $result = $this->adapter->unblockIp($customer['ip'], (int) $customer['speed']);
+
                 if (!$result) {
                     $allSuccessful = false;
                 }
             }
         }
+
         return $allSuccessful;
     }
 }

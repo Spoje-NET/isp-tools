@@ -26,4 +26,9 @@ interface NetworkBackendInterface
      * Unblock IP by setting speed to given value.
      */
     public function unblockIp(string $ip, int $speed): bool;
+
+    /**
+     * Obtain list of customer's IP addresses.
+     */
+    public function getCustomerIPs(string $code): array;
 }
