@@ -1,3 +1,7 @@
 vendor/
 debian/isp-tools/
 nbproject/
+.env
+/.build/
+tests/svn/
+

@@ -1,60 +1,82 @@
 <?php
 
-namespace SpojeNet\System;
+declare(strict_types=1);
 
 /**
- * System.spoje.net - Odblokuje internet všem kteří nedluží
+ * This file is part of the AbraFlexi Reminder package
+ *
+ * https://github.com/SpojeNET/isp-tools
+ *
+ * (c) Spoje.Net <https://spoje.net/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace SpojeNet\System;
+
+use Ease\Shared;
+
+/**
+ * System.spoje.net - Odblokuje internet všem kteří nedluží.
  *
  * @author     Vítězslav Dvořák <info@vitexsofware.cz>
  * @copyright  (G) 2017-2019 Vitex Software
  */
+\define('EASE_APPNAME', 'UnblockNet');
 
-define('EASE_APPNAME', 'UnblockNet');
-$inc = 'includes/Init.php';
-if (!file_exists($inc)) {
-    chdir('..');
-}
-require_once $inc;
+require_once '../vendor/autoload.php';
 
 $options = getopt('o::e::', ['output::', 'environment::']);
+Shared::init(
+    ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY'],
+    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : '../.env'),
+);
 $exitcode = 0;
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : \Ease\Shared::cfg('RESULT_FILE', 'php://stdout');
 
-$reminder = new \SpojeNet\System\Upominac();
-$reminder->invoicer->logBanner(\Ease\Shared::appName());
-$reminder->customer->adresar->defaultUrlParams['limit'] = 0;
-$adresses = $reminder->customer->adresar->getColumnsFromAbraFlexi('summary', [], 'kod');
+$deblocker = new \SpojeNet\DeBlocker();
+$deblocker->invoicer->logBanner(\Ease\Shared::appName());
+$adresses = $deblocker->customer->adresar->getColumnsFromAbraFlexi('summary', [], 'kod');
 $lmsIDs = [];
-$reminder->addStatusMessage(count($adresses) . ' ' . _('known customers'));
+$deblocker->addStatusMessage(\count($adresses).' '._('known customers'));
 $invcount = 0;
 $unblockedCount = 0;
 $customersWithoutCode = 0;
 
-foreach ($reminder->getInvoicesStatus(["typDokl eq 'code:FAKTURA' or typDokl eq 'code:ZALOHA'", 'limit' => 0]) as $companyCode => $companyInfo) {
-    $invcount++;
+$customersToUnblock = [];
+
+foreach ($deblocker->getInvoicesStatus(["typDokl eq 'code:FAKTURA' or typDokl eq 'code:ZALOHA'", 'limit' => 0]) as $companyCode => $companyInfo) {
+    ++$invcount;
+
     if ($companyInfo['balance'] >= 0) {
         $company = \AbraFlexi\Functions::uncode($companyCode);
-        if (array_key_exists($company, $adresses)) {
-            $reminder->customer->adresar->setData($adresses[$company]);
-            $reminder->setConnect($company);
-            $unblockedCount++;
+
+        if (\array_key_exists($company, $adresses)) {
+            $customer = $adresses[$company];
+            $customersToUnblock[] = $customer;
+            ++$unblockedCount;
         } else {
-            $customersWithoutCode++;
-//            $reminder->addStatusMessage(sprintf(_('Invoice %s without CompanyCode') . ': ', implode(',', array_keys($companyInfo['invoice']))), 'warning');
+            ++$customersWithoutCode;
+            //            $reminder->addStatusMessage(sprintf(_('Invoice %s without CompanyCode') . ': ', implode(',', array_keys($companyInfo['invoice']))), 'warning');
         }
     }
 }
-$reminder->addStatusMessage($invcount . ' ' . _('invoices checked'));
+
+$deblocker->unblockCustomers($customersToUnblock);
+
+$deblocker->addStatusMessage($invcount.' '._('invoices checked'));
 
 // Generate MultiFlexi-compliant report
 $hasErrors = false;
 $hasWarnings = ($customersWithoutCode > 0);
 
-foreach ($reminder->getStatusMessages() as $message) {
+foreach ($deblocker->getStatusMessages() as $message) {
     if (isset($message['type']) && $message['type'] === 'error') {
         $hasErrors = true;
         $exitcode = 1;
+
         break;
     }
 }
@@ -68,14 +90,14 @@ if ($hasErrors) {
         'Unblocked %d clients with positive balance. %d invoices checked. %d customers without company code.',
         $unblockedCount,
         $invcount,
-        $customersWithoutCode
+        $customersWithoutCode,
     );
 } else {
     $status = 'success';
     $reportMessage = sprintf(
         'Successfully unblocked internet for %d clients with positive balance. %d invoices checked.',
         $unblockedCount,
-        $invcount
+        $invcount,
     );
 }
 
@@ -85,7 +107,7 @@ $report = [
     'timestamp' => date('c'),
     'message' => $reportMessage,
     'metrics' => [
-        'total_customers' => count($adresses),
+        'total_customers' => \count($adresses),
         'invoices_checked' => $invcount,
         'clients_unblocked' => $unblockedCount,
         'customers_without_code' => $customersWithoutCode,
@@ -94,6 +116,6 @@ $report = [
 ];
 
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT));
-$reminder->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
+$deblocker->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
 
 exit($exitcode);

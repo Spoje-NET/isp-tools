@@ -1,77 +1,84 @@
 <?php
 
-namespace SpojeNet\System;
+declare(strict_types=1);
 
 /**
- * System.spoje.net - zablokuje internet všem klientům kteří mají štítek ODPOJEN
+ * This file is part of the AbraFlexi Reminder package
  *
- * @author     Vítězslav Dvořák <info@vitexsofware.cz>
- * @copyright  (G) 2019 Vitex Software
+ * https://github.com/SpojeNET/isp-tools
+ *
+ * (c) Spoje.Net <https://spoje.net/>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
-define('EASE_APPNAME', 'BlockNet');
-$inc = 'includes/Init.php';
-if (!file_exists($inc)) {
-    chdir('..');
-}
-require_once $inc;
+namespace SpojeNet\System;
+
+use Ease\Shared;
+
+/**
+ * System.spoje.net - zablokuje internet všem klientům kteří mají štítek ODPOJEN.
+ *
+ * @author     Vítězslav Dvořák <info@vitexsofware.cz>
+ * @copyright  (G) 2019-2026 Spoje.Net s.r.o.
+ */
+\define('EASE_APPNAME', 'BlockNet');
+
+require_once '../vendor/autoload.php';
 
 $options = getopt('o::e::', ['output::', 'environment::']);
+Shared::init(
+    ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE', 'NETBOXURL', 'NETBOXTOKEN'],
+    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : '../.env'),
+);
 $exitcode = 0;
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : \Ease\Shared::cfg('RESULT_FILE', 'php://stdout');
 
-$reminder = new \SpojeNet\System\Upominac();
-$reminder->invoicer->logBanner(constant('EASE_APPNAME'));
-$adresses = $reminder->customer->adresar->getColumnsFromAbraFlexi(
-    ['kod', 'stitky', 'nazev'],
-    ['stitky' => 'ODPOJENO','limit' => 0],
-    'kod'
-);
-$lmsIDs = [];
-$reminder->addStatusMessage(count($adresses) . ' ' . _('customers with label DISCONNECTED'));
+$deblocker = new \SpojeNet\DeBlocker();
+$deblocker->logBanner();
+
+$addresses = $deblocker->getBlocked();
+
 $clientCount = 0;
 $vipSkipped = 0;
 $noDisconnectSkipped = 0;
 $blockedCount = 0;
+$lmsIDs = [];
 
-foreach ($adresses as $kod => $address) {
+foreach ($addresses as $kod => $address) {
     $lables = \AbraFlexi\Stitek::listToArray($address['stitky']);
 
-    if (array_key_exists('VIP', $lables)) {
-        $reminder->addStatusMessage($kod . ' ' . $address['nazev'] . ' ' . _('VIP'), 'warning');
-        $vipSkipped++;
+    if (\array_key_exists(\Ease\Shared::cfg('LABEL_VIP'), $lables)) {
+        $deblocker->addStatusMessage($kod.' '.$address['nazev'].' '._('VIP'), 'warning');
+        ++$vipSkipped;
+
         continue;
     }
 
-    if (array_key_exists('NODISCONNECT', $lables)) {
-        $reminder->addStatusMessage($kod . ' ' . $address['nazev'] . ' ' . _('NODISCONNECT'), 'warning');
-        $noDisconnectSkipped++;
+    if (\array_key_exists(\Ease\Shared::cfg('LABEL_NODISCONNECT'), $lables)) {
+        $deblocker->addStatusMessage($kod.' '.$address['nazev'].' '._('NODISCONNECT'), 'warning');
+        ++$noDisconnectSkipped;
+
         continue;
     }
 
-    $clientCount++;
-    $reminder->customer->adresar->setData($address);
-    $lmsID = $reminder->customer->adresar->getRecordCode();
-    if (!empty($lmsID)) {
-        $lmsIDs[$lmsID] = $lmsID;
-        $reminder->customer->adresar->addStatusMessage($kod . ' ' . $address['nazev'] . ' ' . _(' to disconnect'));
-        $blockedCount++;
-    }
+    ++$clientCount;
+    $lmsIDs[$address['kod']] = $address;
 }
 
-if (!empty($lmsIDs)) {
-    $reminder->setDisconnect($lmsIDs);
-}
+$deblocker->blockCustomers(array_values($lmsIDs));
 
 // Generate MultiFlexi-compliant report
 $hasErrors = false;
 $hasWarnings = ($vipSkipped > 0 || $noDisconnectSkipped > 0);
 
-foreach ($reminder->getStatusMessages() as $message) {
+foreach ($deblocker->getStatusMessages() as $message) {
     if (isset($message['type']) && $message['type'] === 'error') {
         $hasErrors = true;
         $exitcode = 1;
+
         break;
     }
 }
@@ -85,7 +92,7 @@ if ($hasErrors) {
         'Blocked %d clients with ODPOJEN label. Skipped %d VIP and %d NODISCONNECT clients.',
         $blockedCount,
         $vipSkipped,
-        $noDisconnectSkipped
+        $noDisconnectSkipped,
     );
 } else {
     $status = 'success';
@@ -98,7 +105,7 @@ $report = [
     'timestamp' => date('c'),
     'message' => $reportMessage,
     'metrics' => [
-        'total_disconnected_customers' => count($adresses),
+        'total_disconnected_customers' => \count($adresses),
         'clients_blocked' => $blockedCount,
         'vip_skipped' => $vipSkipped,
         'no_disconnect_skipped' => $noDisconnectSkipped,
@@ -107,6 +114,6 @@ $report = [
 ];
 
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT));
-$reminder->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
+$deblocker->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
 
 exit($exitcode);
