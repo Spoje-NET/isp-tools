@@ -32,7 +32,13 @@ class DeBlocker extends \Ease\Sand
         $this->adapter = $adapter ?? new SubVersioner();
     }
 
-    public function getBlocked(): array
+    public function getInetCustomers() {
+        $contract = new \AbraFlexi\Smlouva();
+        return $contract->getDocuments(['limit'=>0]);
+    }
+
+
+    public function getBlockedCustomers(): array
     {
         $diconnectedLabel = \Ease\Shared::cfg('LABEL_DISCONNECTED');
         $adresses = $this->customer->getCustomerList(['stitky' => $diconnectedLabel, 'limit' => 0]);
@@ -41,6 +47,16 @@ class DeBlocker extends \Ease\Sand
         return $adresses;
     }
 
+    public function getOnlineCustomers(): array
+    {
+        $diconnectedLabel = \Ease\Shared::cfg('LABEL_DISCONNECTED');
+        $adresses = $this->customer->getCustomers(['stitky' => $diconnectedLabel, 'limit' => 0]);
+        $this->addStatusMessage(\count($adresses).' '.sprintf(_('customers with label %s'), $diconnectedLabel));
+
+        return $adresses;
+    }
+    
+    
     /**
      * Block customers by setting their IP speed to 0.
      */

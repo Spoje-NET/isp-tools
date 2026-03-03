@@ -42,7 +42,7 @@ if (\Ease\Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
-$addresses = $deblocker->getBlocked();
+$addresses = $deblocker->getBlockedCustomers();
 
 $clientCount = 0;
 $vipSkipped = 0;

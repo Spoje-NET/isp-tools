@@ -37,8 +37,13 @@ $exitcode = 0;
 $destination = \array_key_exists('output', $options) ? $options['output'] : \Ease\Shared::cfg('RESULT_FILE', 'php://stdout');
 
 $deblocker = new \SpojeNet\DeBlocker();
-$deblocker->invoicer->logBanner(\Ease\Shared::appName());
-$adresses = $deblocker->customer->adresar->getColumnsFromAbraFlexi('summary', [], 'kod');
+if (\Ease\Shared::cfg('APP_DEBUG', false)) {
+    $deblocker->logBanner();
+}
+
+$contracts = $deblocker->getInetCustomers();
+
+$adresses = $deblocker->getOnlineCustomers();
 $lmsIDs = [];
 $deblocker->addStatusMessage(\count($adresses).' '._('known customers'));
 $invcount = 0;
