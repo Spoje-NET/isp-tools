@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
-  "schemaVersion": "3.2.1",
+  "schemaVersion": "3.4.0",
   "uuid": "2a7d8e9f-1c3e-4f2a-b7e9-8d0f2a3b4c5d",
   "version": "1.0.0",
   "name": {
@@ -18,6 +18,13 @@
   ],
   "homepage": "https://github.com/Spoje-NET/isp-tools",
   "executable": "unblocknet",
+  "events": {
+    "emits": {
+      "network.unblocked": {
+        "description": "Network access was restored"
+      }
+    }
+  },
   "environment": {
     "ABRAFLEXI_COMPANY": {
       "type": "string",
