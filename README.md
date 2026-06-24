@@ -35,8 +35,12 @@ This project provides three MultiFlexi applications:
 ### MarkDefaulters (`abraflexi-mark-defaulters`)
 
 Identifies customers with the `UPOMINKA3` label (3rd reminder sent) who also
-have an active internet service contract and marks them for disconnection by
+have an active **internet** service contract and marks them for disconnection by
 adding the `ODPOJENO` label. Triggered by the `invoice.reminder.sent` event.
+
+Customers with only VoIP, IpTV, Hosting or Housing contracts are **not** marked
+for internet disconnection even if their invoices are overdue. Set `INET_CONTRACT_TYPE`
+to the AbraFlexi `typSmlouvyK` code of internet contracts to enable precise filtering.
 
 ### BlockNet
 
