@@ -2,13 +2,45 @@
 
 ISP network management tools for blocking/unblocking internet access based on AbraFlexi invoice status.
 
+## Event-driven pipeline
+
+```
+abraflexi-reminder (3rd reminder sent)
+        │
+        │ emits: invoice.reminder.sent
+        ▼
+multiflexi-event-processor
+        │ rule: invoice.reminder.sent → mark-defaulters runtemplate
+        ▼
+abraflexi-mark-defaulters
+  - finds customers with UPOMINKA3 + active internet contract
+  - sets ODPOJENO label in AbraFlexi
+        │
+        │ AbraFlexi webhook: adresar updated
+        ▼
+multiflexi-event-processor
+        │ rule: adresar update → blocknet runtemplate
+        ▼
+blocknet
+  - disconnects all customers with ODPOJENO label
+```
+
+Payment clears → `abraflexi-reminder-clean-labels` removes `UPOMINKA*` →
+`multiflexi-event-processor` triggers `unblocknet` → internet restored.
+
 ## MultiFlexi Applications
 
-This project provides two MultiFlexi applications:
+This project provides three MultiFlexi applications:
+
+### MarkDefaulters (`abraflexi-mark-defaulters`)
+
+Identifies customers with the `UPOMINKA3` label (3rd reminder sent) who also
+have an active internet service contract and marks them for disconnection by
+adding the `ODPOJENO` label. Triggered by the `invoice.reminder.sent` event.
 
 ### BlockNet
 
-Blocks internet access for all clients with the ODPOJEN (DISCONNECTED) label in AbraFlexi.
+Blocks internet access for all clients with the `ODPOJENO` (DISCONNECTED) label in AbraFlexi.
 
 ### UnblockNet
 
@@ -64,6 +96,12 @@ cp .env.example .env
 
 ## Usage
 
+### Mark customers for disconnection
+
+```bash
+bin/abraflexi-mark-defaulters
+```
+
 ### Block Internet Access
 
 ```bash
@@ -82,8 +120,43 @@ These applications are designed to work with MultiFlexi for automated scheduling
 
 The MultiFlexi application definitions are located in the `multiflexi/` directory:
 
+- `mark_defaulters.multiflexi.app.json` - MarkDefaulters application definition
 - `blocknet.multiflexi.app.json` - BlockNet application definition
 - `unblocknet.multiflexi.app.json` - UnblockNet application definition
+
+### Setting up event rules
+
+After registering all apps in MultiFlexi and creating their runtemplates,
+configure the event processor rules via `multiflexi-cli`:
+
+```bash
+# Rule 1: after 3rd reminder → mark customers for disconnection
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "invoice.reminder.sent" \
+  --operation "any" \
+  --runtemplate_id <MARK_DEFAULTERS_RUNTEMPLATE_ID> \
+  --priority 10 \
+  --enabled 1
+
+# Rule 2: after ODPOJENO is set (adresar webhook) → block internet
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "adresar" \
+  --operation "update" \
+  --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID> \
+  --priority 5 \
+  --enabled 1
+```
+
+#### Customer labels
+
+| Label | Set by | Meaning |
+|-------|--------|---------|
+| `UPOMINKA3` | abraflexi-reminder | 3rd payment reminder sent |
+| `ODPOJENO` | abraflexi-mark-defaulters | Customer marked for disconnection |
+| `NEODPOJOVAT` | Manual | Never disconnect this customer |
+| `VIP` | Manual | Skip disconnection for VIP customers |
 
 ## NetBox Integration
 

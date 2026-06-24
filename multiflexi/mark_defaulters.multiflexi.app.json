@@ -1,0 +1,138 @@
+{
+  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "schemaVersion": "3.4.0",
+  "uuid": "d4fc95d4-2d92-4949-909b-0ced863a2fd4",
+  "name": {
+    "en": "Mark Defaulters",
+    "cs": "Označit neplatiče"
+  },
+  "description": {
+    "en": "Marks customers with 3rd reminder (UPOMINKA3) and an active internet service contract for disconnection by adding the ODPOJENO label. Intended to be triggered by the multiflexi-event-processor after the invoice.reminder.sent event (score 3).",
+    "cs": "Označí zákazníky s třetí upomínkou (UPOMINKA3) a platnou smlouvou na internetové připojení ke odpojení přidáním štítku ODPOJENO. Určeno ke spuštění přes multiflexi-event-processor po události invoice.reminder.sent (úroveň 3)."
+  },
+  "tags": [
+    "AbraFlexi",
+    "ISP",
+    "Network",
+    "Reminder"
+  ],
+  "requirements": [
+    "AbraFlexi"
+  ],
+  "homepage": "https://github.com/SpojeNET/isp-tools",
+  "executable": "abraflexi-mark-defaulters",
+  "events": {
+    "consumes": {
+      "invoice.reminder.sent": {
+        "description": "Triggered after the 3rd reminder is sent to mark the customer for disconnection"
+      }
+    },
+    "emits": {
+      "credit.checked": {
+        "description": "Customer credit checked; ODPOJENO label set on overdue internet customers — triggers blocknet"
+      }
+    }
+  },
+  "environment": {
+    "ABRAFLEXI_URL": {
+      "type": "url",
+      "description": {
+        "en": "AbraFlexi Server URI",
+        "cs": "Adresa serveru AbraFlexi"
+      },
+      "defval": "https://demo.flexibee.eu:5434",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_LOGIN": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Login",
+        "cs": "Přihlašovací jméno do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_PASSWORD": {
+      "type": "password",
+      "description": {
+        "en": "AbraFlexi password",
+        "cs": "Heslo do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_COMPANY": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Company code",
+        "cs": "Kód společnosti v AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "LABEL_THIRD_REMINDER": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi label set by abraflexi-reminder after 3rd reminder",
+        "cs": "Štítek AbraFlexi nastavený po třetí upomínce"
+      },
+      "defval": "UPOMINKA3",
+      "required": false,
+      "category": "Labels"
+    },
+    "LABEL_DISCONNECTED": {
+      "type": "string",
+      "description": {
+        "en": "Label to set on customers marked for disconnection (must match isp-tools blocknet config)",
+        "cs": "Štítek nastavený zákazníkům určeným k odpojení (musí odpovídat nastavení blocknet)"
+      },
+      "defval": "ODPOJENO",
+      "required": false,
+      "category": "Labels"
+    },
+    "LABEL_NODISCONNECT": {
+      "type": "string",
+      "description": {
+        "en": "Customers with this label are never marked for disconnection",
+        "cs": "Zákazníci s tímto štítkem nebudou nikdy označeni k odpojení"
+      },
+      "defval": "NEODPOJOVAT",
+      "required": false,
+      "category": "Labels"
+    },
+    "LABEL_VIP": {
+      "type": "string",
+      "description": {
+        "en": "VIP customers are skipped",
+        "cs": "VIP zákazníci jsou přeskočeni"
+      },
+      "defval": "VIP",
+      "required": false,
+      "category": "Labels"
+    },
+    "RESULT_FILE": {
+      "type": "string",
+      "description": {
+        "en": "Write output JSON report to this path",
+        "cs": "Zapsat výstupní JSON report na tuto cestu"
+      },
+      "defval": "php://stdout",
+      "required": false,
+      "category": "Behavior"
+    },
+    "EASE_LOGGER": {
+      "type": "string",
+      "description": {
+        "en": "Write log messages using",
+        "cs": "Způsob zápisu logovacích zpráv"
+      },
+      "defval": "console|syslog",
+      "required": false,
+      "category": "Behavior"
+    }
+  }
+}
