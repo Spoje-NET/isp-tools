@@ -2,7 +2,7 @@
 
 ISP network management tools for blocking/unblocking internet access based on AbraFlexi invoice status.
 
-## Event-driven pipeline
+## Pipeline A — Reminder → Disconnection
 
 ```
 abraflexi-reminder (3rd reminder sent)
@@ -13,7 +13,7 @@ multiflexi-event-processor
         │ rule: invoice.reminder.sent → mark-defaulters runtemplate
         ▼
 abraflexi-mark-defaulters
-  - finds customers with UPOMINKA3 + active internet contract
+  - finds customers with UPOMINKA3 + active internet contract (typSmlouvy.INTERNET)
   - sets ODPOJENO label in AbraFlexi
         │
         │ AbraFlexi webhook: adresar updated
@@ -27,6 +27,39 @@ blocknet
 
 Payment clears → `abraflexi-reminder-clean-labels` removes `UPOMINKA*` →
 `multiflexi-event-processor` triggers `unblocknet` → internet restored.
+
+## Pipeline B — Bank Payment → Matching → Confirmation
+
+```
+AbraFlexi: new record in banka or pokladna evidence
+        │
+        │ webhook via abraflexi-webhook-acceptor → changes_cache
+        ▼
+multiflexi-event-processor
+        │ rule: banka/pokladna create → match-received-payment runtemplate
+        │       env_mapping: {"DOCUMENTID": "recordid"}
+        ▼
+abraflexi-match-received-payment
+  exit 0: payment matched to invoice
+        │
+        │ AbraFlexi: faktura-vydana updated (linked to payment)
+        │ webhook: faktura-vydana, update
+        ▼
+  multiflexi-event-processor
+        │ rule: faktura-vydana update → potvrzeni-prijeti-uhrady runtemplate
+        │       env_mapping: {"DOCID": "recordid"}
+        ▼
+  abraflexi-potvrzeni-prijeti-uhrady
+    - sends tax document confirmation to customer
+
+  exit 2: payment found but not matched (unknown varsym / under/overpayment)
+        │
+        │ rule: payment.unmatched → potvrzeni-prijeti-bankovni-platby runtemplate
+        │       env_mapping: {"DOCID": "recordid"}
+        ▼
+  abraflexi-potvrzeni-prijeti-bankovni-platby
+    - notifies customer their payment was received but awaits manual matching
+```
 
 ## MultiFlexi Applications
 
@@ -134,6 +167,8 @@ After registering all apps in MultiFlexi and creating their runtemplates,
 configure the event processor rules via `multiflexi-cli`:
 
 ```bash
+# ── Pipeline A: Reminder → Disconnection ──────────────────────────────────
+
 # Rule 1: after 3rd reminder → mark customers for disconnection
 multiflexi-cli eventrule create \
   --event_source_id 1 \
@@ -151,7 +186,64 @@ multiflexi-cli eventrule create \
   --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID> \
   --priority 5 \
   --enabled 1
+
+# Rule 3: after UPOMINKA* labels removed (adresar webhook) → unblock internet
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "adresar" \
+  --operation "update" \
+  --runtemplate_id <UNBLOCKNET_RUNTEMPLATE_ID> \
+  --priority 5 \
+  --enabled 1
+
+# ── Pipeline B: Bank Payment → Matching → Confirmation ────────────────────
+
+# Rule 4: new bank record → run payment matcher
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "banka" \
+  --operation "create" \
+  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
+  --priority 20 \
+  --enabled 1 \
+  --env_mapping '{"DOCUMENTID":"recordid"}'
+
+# Rule 5: new cash record → run payment matcher
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "pokladna" \
+  --operation "create" \
+  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
+  --priority 20 \
+  --enabled 1 \
+  --env_mapping '{"DOCUMENTID":"recordid"}'
+
+# Rule 6: invoice updated (= matched payment) → send tax document confirmation
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "faktura-vydana" \
+  --operation "update" \
+  --runtemplate_id <POTVRZENI_PRIJETI_UHRADY_RUNTEMPLATE_ID> \
+  --priority 10 \
+  --enabled 1 \
+  --env_mapping '{"DOCID":"recordid"}'
+
+# Rule 7: unmatched payment (exit 2 from matcher) → notify customer
+multiflexi-cli eventrule create \
+  --event_source_id 1 \
+  --evidence "payment.unmatched" \
+  --operation "any" \
+  --runtemplate_id <POTVRZENI_PRIJETI_BANKOVNI_PLATBY_RUNTEMPLATE_ID> \
+  --priority 10 \
+  --enabled 1 \
+  --env_mapping '{"DOCID":"recordid"}'
 ```
+
+#### INET_CONTRACT_TYPE
+
+Set to `typSmlouvy.INTERNET` for Spoje.net deployment to restrict disconnection
+to customers with active internet contracts only (typSmlouvy code `INTERNET`).
+Leave empty to match all contract types.
 
 #### Customer labels
 

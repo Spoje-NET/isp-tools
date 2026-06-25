@@ -77,10 +77,10 @@
     "INET_CONTRACT_TYPE": {
       "type": "string",
       "description": {
-        "en": "AbraFlexi contract type code (typSmlouvyK) for internet service contracts. Only customers with a matching active contract will be marked for disconnection. Leave empty to match all contract types.",
-        "cs": "Kód typu smlouvy v AbraFlexi (typSmlouvyK) pro internetové připojení. Pouze zákazníci s odpovídající aktivní smlouvou budou označeni. Prázdné = všechny typy smluv."
+        "en": "AbraFlexi contract type code (typSmlouvyK) for internet service contracts. Only customers with a matching active contract will be marked for disconnection. Leave empty to match all contract types. Example: typSmlouvy.INTERNET",
+        "cs": "Kód typu smlouvy v AbraFlexi (typSmlouvyK) pro internetové připojení. Pouze zákazníci s odpovídající aktivní smlouvou budou označeni. Prázdné = všechny typy smluv. Příklad: typSmlouvy.INTERNET"
       },
-      "defval": "",
+      "defval": "typSmlouvy.INTERNET",
       "required": false,
       "category": "Contracts"
     },
