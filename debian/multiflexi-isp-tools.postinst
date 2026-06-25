@@ -1,0 +1,11 @@
+#!/bin/sh
+# postinst script for multiflexi-isp-tools
+set -e
+
+. /usr/share/debconf/confmodule
+
+APPLICATION=$(echo $DPKG_MAINTSCRIPT_PACKAGE | sed 's/multiflexi-//')
+for file in $(ls /usr/share/$APPLICATION/multiflexi/*.app.json)
+do
+	multiflexi-cli application:import-json --file $file
+done

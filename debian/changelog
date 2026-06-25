@@ -1,0 +1,9 @@
+isp-tools (1.0.0) stable; urgency=medium
+
+  * Initial Debian packaging
+  * Add abraflexi-mark-defaulters: bridge UPOMINKA3 → ODPOJENO for internet customers
+  * Add MultiFlexi app definitions for mark-defaulters, blocknet, unblocknet
+  * Filter disconnection by INET_CONTRACT_TYPE (typSmlouvy.INTERNET)
+  * Document Pipeline A and Pipeline B event rules in README
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 25 Jun 2026 00:00:00 +0200

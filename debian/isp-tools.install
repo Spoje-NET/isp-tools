@@ -1,0 +1,4 @@
+debian/tmp/composer.json        usr/share/php/isp-tools/
+debian/autoload.php             usr/share/php/isp-tools/
+src/*.php                       usr/share/isp-tools/
+bin/*                           usr/bin/

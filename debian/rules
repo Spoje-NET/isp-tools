@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+PKG_VERSION := $(shell dpkg-parsechangelog -S Version | sed 's/~.*//')
+PKG_SOURCE  := $(shell jq -r '.name' composer.json)
+
+%:
+	dh $@
+
+override_dh_install:
+	mkdir -p debian/tmp
+	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p' | sed 's/~.*//'`'"' composer.json | sponge debian/tmp/composer.json
+	dh_install
+	sed -i "s|require_once \dirname(__DIR__).'\/vendor\/autoload.php';|require_once '/usr/share/php/isp-tools/autoload.php';|" \
+	    debian/isp-tools/usr/share/isp-tools/*.php || true
+	sed -i -e 's/\.\.\/.env//g' debian/isp-tools/usr/share/isp-tools/*.php || true
+	install -D -m 0644 debian/autoload.php debian/isp-tools/usr/share/php/isp-tools/autoload.php
+	sed -i "s|'unknown'|'$(PKG_SOURCE)'|" \
+		debian/isp-tools/usr/share/php/isp-tools/autoload.php
+	sed -i "s|'0.0.0'|'$(PKG_VERSION)'|" \
+		debian/isp-tools/usr/share/php/isp-tools/autoload.php
+	install -m0755 -d debian/isp-tools/usr/share/pkg-php-tools/autoloaders
+	echo 'spojenet isp-tools isp-tools/autoload.php' > debian/isp-tools/usr/share/pkg-php-tools/autoloaders/isp-tools
+	for f in debian/multiflexi-isp-tools/usr/share/isp-tools/multiflexi/*.app.json; do \
+		jq '.version = "'$(PKG_VERSION)'"' "$$f" | sponge "$$f"; \
+	done

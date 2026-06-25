@@ -1,0 +1,30 @@
+Source: isp-tools
+Section: net
+Priority: optional
+Maintainer: Vítězslav Dvořák <info@vitexsoftware.cz>
+Build-Depends: debhelper-compat (= 13), pkg-php-tools, jq, moreutils
+Standards-Version: 4.5.1
+Homepage: https://github.com/Spoje-NET/isp-tools
+Rules-Requires-Root: no
+Vcs-Git: https://github.com/Spoje-NET/isp-tools.git
+Vcs-Browser: https://github.com/Spoje-NET/isp-tools
+
+Package: isp-tools
+Architecture: all
+Depends: ${misc:Depends}, php-cli, php-spojenet-abraflexi (>= 3.4), php-vitexsoftware-abraflexi-bricks
+Description: ISP tools for AbraFlexi-based internet access management
+ Utilities for managing internet customer disconnection/reconnection
+ based on AbraFlexi invoice status and customer labels.
+ .
+ Includes: abraflexi-mark-defaulters (bridge UPOMINKA3 → ODPOJENO),
+ blocknet (disconnect overdue internet customers),
+ unblocknet (reconnect cleared customers).
+
+Package: multiflexi-isp-tools
+Architecture: all
+Section: web
+Priority: optional
+Depends: multiflexi-cli, isp-tools
+Description: Add ISP Tools to MultiFlexi
+ Install or update MultiFlexi application JSON definitions for
+ ISP Tools (mark-defaulters, blocknet, unblocknet) into MultiFlexi.
