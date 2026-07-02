@@ -1,0 +1,124 @@
+{
+  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "schemaVersion": "3.4.0",
+  "uuid": "628dcba2-8183-4797-8f3a-ccbec4dd2b17",
+  "version": "1.0.0",
+  "name": {
+    "en": "Payment Received Confirmation",
+    "cs": "Potvrzení přijetí úhrady"
+  },
+  "description": {
+    "en": "Sends the customer a payment-received confirmation email with the tax document (invoice PDF) attached. Triggered after a payment was matched to an issued invoice (invoice.matched).",
+    "cs": "Odešle zákazníkovi e-mailem potvrzení o přijetí úhrady s přiloženým daňovým dokladem (PDF faktury). Spouští se po spárování platby s vydanou fakturou (invoice.matched)."
+  },
+  "tags": [
+    "AbraFlexi",
+    "ISP",
+    "Payments",
+    "Email"
+  ],
+  "requirements": [
+    "AbraFlexi"
+  ],
+  "homepage": "https://github.com/Spoje-NET/isp-tools",
+  "executable": "abraflexi-potvrzeni-prijeti-uhrady",
+  "events": {
+    "consumes": {
+      "invoice.matched": {
+        "description": "Payment was matched to an issued invoice (DOCID = invoice code)"
+      }
+    }
+  },
+  "environment": {
+    "ABRAFLEXI_URL": {
+      "type": "url",
+      "description": {
+        "en": "AbraFlexi Server URI",
+        "cs": "Adresa serveru AbraFlexi"
+      },
+      "defval": "https://demo.flexibee.eu:5434",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_LOGIN": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Login",
+        "cs": "Přihlašovací jméno do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_PASSWORD": {
+      "type": "password",
+      "description": {
+        "en": "AbraFlexi password",
+        "cs": "Heslo do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_COMPANY": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Company code",
+        "cs": "Kód společnosti v AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "DOCID": {
+      "type": "string",
+      "description": {
+        "en": "Issued invoice (faktura-vydana) record code to confirm",
+        "cs": "Kód vydané faktury, jejíž úhrada se potvrzuje"
+      },
+      "defval": "",
+      "required": true,
+      "category": "Behavior"
+    },
+    "EASE_FROM": {
+      "type": "email",
+      "description": {
+        "en": "Confirmation email sender address",
+        "cs": "Adresa odesílatele potvrzovacího e-mailu"
+      },
+      "defval": "",
+      "required": false,
+      "category": "Other"
+    },
+    "MUTE": {
+      "type": "bool",
+      "description": {
+        "en": "Dry run - do not actually send the email",
+        "cs": "Zkušební běh - e-mail se ve skutečnosti neodešle"
+      },
+      "defval": "false",
+      "required": false,
+      "category": "Behavior"
+    },
+    "RESULT_FILE": {
+      "type": "string",
+      "description": {
+        "en": "Write output JSON report to this path",
+        "cs": "Zapsat výstupní JSON report na tuto cestu"
+      },
+      "defval": "php://stdout",
+      "required": false,
+      "category": "Behavior"
+    },
+    "EASE_LOGGER": {
+      "type": "string",
+      "description": {
+        "en": "Write log messages using",
+        "cs": "Způsob zápisu logovacích zpráv"
+      },
+      "defval": "console|syslog",
+      "required": false,
+      "category": "Behavior"
+    }
+  }
+}

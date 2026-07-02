@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the AbraFlexi Reminder package
+ * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -18,9 +18,9 @@ use Ergebnis\PhpCsFixer\Config\Rules;
 use Ergebnis\PhpCsFixer\Config\RuleSet\Php81;
 
 $header = <<<'HEADER'
-This file is part of the AbraFlexi Reminder package
+This file is part of the ISP Tools package
 
-https://github.com/SpojeNET/isp-tools
+https://github.com/Spoje-NET/isp-tools
 
 (c) Spoje.Net <https://spoje.net/>
 

@@ -6,7 +6,7 @@ declare(strict_types=1);
 /**
  * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -67,6 +67,7 @@ $candidates = $customer->getCustomerList(['stitky' => $labelThirdReminder, 'limi
 if (empty($candidates)) {
     $report['message'] = 'No customers with '.$labelThirdReminder.' label found.';
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
+
     exit(0);
 }
 
@@ -104,26 +105,26 @@ foreach ($allContracts as $contract) {
 $addresser = new \AbraFlexi\Adresar();
 
 foreach ($candidates as $kod => $address) {
-    $report['metrics']['checked']++;
+    ++$report['metrics']['checked'];
     $labels = \AbraFlexi\Stitek::listToArray((string) ($address['stitky'] ?? ''));
 
     // Skip if already marked, VIP, or explicitly excluded
     if (\array_key_exists($labelDisconnected, $labels)) {
-        $report['metrics']['skipped']++;
+        ++$report['metrics']['skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'already_marked'];
 
         continue;
     }
 
     if (\array_key_exists($labelVip, $labels)) {
-        $report['metrics']['skipped']++;
+        ++$report['metrics']['skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'vip_skipped'];
 
         continue;
     }
 
     if (\array_key_exists($labelNoDisconnect, $labels)) {
-        $report['metrics']['skipped']++;
+        ++$report['metrics']['skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'nodisconnect_skipped'];
 
         continue;
@@ -131,7 +132,7 @@ foreach ($candidates as $kod => $address) {
 
     // Skip if no internet service contract
     if (!isset($customersWithContracts[$kod])) {
-        $report['metrics']['skipped']++;
+        ++$report['metrics']['skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'no_contract_skipped'];
 
         continue;
@@ -146,11 +147,11 @@ foreach ($candidates as $kod => $address) {
     $saved = $addresser->sync();
 
     if ($saved) {
-        $report['metrics']['marked']++;
+        ++$report['metrics']['marked'];
         $report['customers'][] = ['kod' => $kod, 'nazev' => $address['nazev'] ?? '', 'action' => 'marked_for_disconnection'];
     } else {
         $report['exitcode'] = 1;
-        $report['metrics']['errors']++;
+        ++$report['metrics']['errors'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'error_setting_label'];
     }
 }

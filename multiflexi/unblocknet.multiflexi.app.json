@@ -19,6 +19,11 @@
   "homepage": "https://github.com/Spoje-NET/isp-tools",
   "executable": "unblocknet",
   "events": {
+    "consumes": {
+      "adresar.updated": {
+        "description": "AbraFlexi address record updated - reacts when reminder labels are cleared after payment"
+      }
+    },
     "emits": {
       "network.unblocked": {
         "description": "Network access was restored"

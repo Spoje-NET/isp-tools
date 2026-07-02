@@ -1,0 +1,188 @@
+{
+  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "schemaVersion": "3.4.0",
+  "uuid": "4c188353-3b5a-4229-917b-31206dee5bba",
+  "version": "1.0.0",
+  "name": {
+    "en": "Match Received Payment",
+    "cs": "Spárovat přijatou platbu"
+  },
+  "description": {
+    "en": "Matches a received bank/cash payment to an unpaid issued invoice by variable symbol. Exit 0 = matched and linked; exit 2 = received but cannot be auto-matched (unknown variable symbol, ambiguity or overpayment) — emits payment.unmatched. Intended to be triggered by multiflexi-event-processor on new banka/pokladna records.",
+    "cs": "Spáruje přijatou bankovní/pokladní platbu s neuhrazenou vydanou fakturou podle variabilního symbolu. Exit 0 = spárováno; exit 2 = přijato, ale nelze spárovat automaticky (neznámý variabilní symbol, nejednoznačnost nebo přeplatek) — vydává událost payment.unmatched. Určeno ke spuštění přes multiflexi-event-processor při nové platbě v bance/pokladně."
+  },
+  "tags": [
+    "AbraFlexi",
+    "ISP",
+    "Payments",
+    "Matching"
+  ],
+  "requirements": [
+    "AbraFlexi"
+  ],
+  "homepage": "https://github.com/Spoje-NET/isp-tools",
+  "executable": "abraflexi-match-received-payment",
+  "exitCodes": {
+    "0": {
+      "description": {
+        "en": "Payment matched and linked to an issued invoice",
+        "cs": "Platba spárována s vydanou fakturou"
+      },
+      "severity": "success"
+    },
+    "1": {
+      "description": {
+        "en": "Error - missing or unknown document, settle failure",
+        "cs": "Chyba - chybějící nebo neznámý doklad, selhání párování"
+      },
+      "severity": "error"
+    },
+    "2": {
+      "description": {
+        "en": "Payment received but cannot be auto-matched",
+        "cs": "Platba přijata, ale nelze ji spárovat automaticky"
+      },
+      "severity": "warning"
+    }
+  },
+  "events": {
+    "consumes": {
+      "banka.created": {
+        "description": "New bank record webhook change routed by multiflexi-event-processor (DOCUMENTID = recordid)"
+      },
+      "pokladna.created": {
+        "description": "New cash record webhook change routed by multiflexi-event-processor (DOCUMENTID = recordid)"
+      }
+    },
+    "emits": {
+      "invoice.matched": {
+        "description": "Payment was matched and linked to an issued invoice — triggers abraflexi-potvrzeni-prijeti-uhrady"
+      },
+      "payment.unmatched": {
+        "description": "Payment received but not auto-matched (exit code 2) — triggers abraflexi-potvrzeni-prijeti-bankovni-platby"
+      }
+    }
+  },
+  "environment": {
+    "ABRAFLEXI_URL": {
+      "type": "url",
+      "description": {
+        "en": "AbraFlexi Server URI",
+        "cs": "Adresa serveru AbraFlexi"
+      },
+      "defval": "https://demo.flexibee.eu:5434",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_LOGIN": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Login",
+        "cs": "Přihlašovací jméno do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_PASSWORD": {
+      "type": "password",
+      "description": {
+        "en": "AbraFlexi password",
+        "cs": "Heslo do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_COMPANY": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Company code",
+        "cs": "Kód společnosti v AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "DOCUMENTID": {
+      "type": "string",
+      "description": {
+        "en": "Bank/cash record code or numeric id of the payment to match",
+        "cs": "Kód nebo číselné id bankovního/pokladního dokladu ke spárování"
+      },
+      "defval": "",
+      "required": true,
+      "category": "Behavior"
+    },
+    "PAYMENT_EVIDENCE": {
+      "type": "string",
+      "description": {
+        "en": "Payment evidence to load DOCUMENTID from: banka, pokladna or auto (try banka first, then pokladna)",
+        "cs": "Evidence, ze které se DOCUMENTID načte: banka, pokladna nebo auto (nejprve banka, pak pokladna)"
+      },
+      "defval": "auto",
+      "required": false,
+      "category": "Behavior"
+    },
+    "MATCH_OVERPAY_MODE": {
+      "type": "string",
+      "description": {
+        "en": "Overpayment handling: settle = link payment and keep the overpayment, manual = leave for manual matching (exit 2)",
+        "cs": "Zpracování přeplatku: settle = spárovat a přeplatek ponechat, manual = ponechat ručnímu párování (exit 2)"
+      },
+      "defval": "settle",
+      "required": false,
+      "category": "Behavior"
+    },
+    "LABEL_OVERPAY": {
+      "type": "string",
+      "description": {
+        "en": "Label set on overpaid documents by the matcher library",
+        "cs": "Štítek nastavovaný na přeplacené doklady párovací knihovnou"
+      },
+      "defval": "PREPLATEK",
+      "required": false,
+      "category": "Other"
+    },
+    "LABEL_INVOICE_MISSING": {
+      "type": "string",
+      "description": {
+        "en": "Label set on payments without a matching invoice",
+        "cs": "Štítek nastavovaný na platby bez odpovídající faktury"
+      },
+      "defval": "CHYBIFAKTURA",
+      "required": false,
+      "category": "Other"
+    },
+    "LABEL_UNIDENTIFIED": {
+      "type": "string",
+      "description": {
+        "en": "Label set on unidentified payments",
+        "cs": "Štítek nastavovaný na neidentifikované platby"
+      },
+      "defval": "NEIDENTIFIKOVANO",
+      "required": false,
+      "category": "Other"
+    },
+    "RESULT_FILE": {
+      "type": "string",
+      "description": {
+        "en": "Write output JSON report to this path",
+        "cs": "Zapsat výstupní JSON report na tuto cestu"
+      },
+      "defval": "php://stdout",
+      "required": false,
+      "category": "Behavior"
+    },
+    "EASE_LOGGER": {
+      "type": "string",
+      "description": {
+        "en": "Write log messages using",
+        "cs": "Způsob zápisu logovacích zpráv"
+      },
+      "defval": "console|syslog",
+      "required": false,
+      "category": "Behavior"
+    }
+  }
+}

@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the AbraFlexi Reminder package
+ * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -29,18 +29,19 @@ class SubVersioner implements NetworkBackendInterface
     private ?string $logFile;
     private string $tempDir;
     private string $repoName = 'hostsbrevnov';
+
     /**
      * Tracks which tempDirs have been checked out in this process.
      * Keyed by tempDir path.
      *
-     * @var array<string,bool>
+     * @var array<string, bool>
      */
     private static array $repoCheckedOutPaths = [];
 
     /**
      * Tracks which tempDirs have been cleaned up.
      *
-     * @var array<string,bool>
+     * @var array<string, bool>
      */
     private static array $repoCleanedPaths = [];
 
@@ -57,6 +58,12 @@ class SubVersioner implements NetworkBackendInterface
         }
 
         $this->tempDir = $workingDir ?? sys_get_temp_dir().'/'.$this->repoName;
+    }
+
+    public function __destruct()
+    {
+        // Ensure repository is cleaned up once when object is destroyed
+        $this->cleanup();
     }
 
     /**
@@ -76,18 +83,23 @@ class SubVersioner implements NetworkBackendInterface
             foreach ($lines as $line) {
                 $keep = true;
 
-                if ($line[0] !== '#') {
+                if ($line !== '' && $line[0] !== '#') {
                     $fields = explode("\t", $line);
 
                     if (\count($fields) > 0 && trim($fields[0]) === $ip) {
-                        $commentParts = explode('#', $line);
+                        $commentParts = explode('#', $line, 2);
 
-                        if (\count($commentParts) > 1) {
+                        if (\count($commentParts) > 1 && preg_match('/\bspeed=0\b/', $commentParts[1]) !== 1) {
+                            // Preserve the original speed so unblockIp can restore it later
+                            $origSpeed = preg_match('/\bspeed=(\d+)\b/', $commentParts[1], $speedMatch) ? $speedMatch[1] : null;
+
                             // Modify comment to speed=0, remove dashboard parts
-                            $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
-                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
+                            $modifiedComment = preg_replace('/\b(?:speed|orig)=\d+\b/', '', $commentParts[1]);
+                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', (string) $modifiedComment);
                             $modifiedComment = trim($modifiedComment);
-                            $newLine = $commentParts[0].'# speed=0'.$modifiedComment;
+                            $newLine = $commentParts[0].'# speed=0'
+                                .($origSpeed === null ? '' : ' orig='.$origSpeed)
+                                .($modifiedComment === '' ? '' : ' '.$modifiedComment);
                             $newContent .= $newLine."\n";
                             $keep = false;
                         }
@@ -129,18 +141,23 @@ class SubVersioner implements NetworkBackendInterface
             foreach ($lines as $line) {
                 $keep = true;
 
-                if ($line[0] !== '#') {
+                if ($line !== '' && $line[0] !== '#') {
                     $fields = explode("\t", $line);
 
                     if (\count($fields) > 0 && trim($fields[0]) === $ip) {
-                        $commentParts = explode('#', $line);
+                        $commentParts = explode('#', $line, 2);
 
                         if (\count($commentParts) > 1) {
-                            // Modify comment to speed=$speed, remove dashboard parts
-                            $modifiedComment = preg_replace('/speed=\d+/', '', $commentParts[1]);
-                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', $modifiedComment);
+                            // Restore the speed recorded by blockIp, fall back to given value
+                            $restoreSpeed = preg_match('/\borig=(\d+)\b/', $commentParts[1], $origMatch) ? (int) $origMatch[1] : $speed;
+
+                            // Modify comment to restored speed, remove dashboard parts
+                            $modifiedComment = preg_replace('/\b(?:speed|orig)=\d+\b/', '', $commentParts[1]);
+                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', (string) $modifiedComment);
                             $modifiedComment = trim($modifiedComment);
-                            $newLine = $commentParts[0].'# speed='.$speed.$modifiedComment;
+                            $newLine = $commentParts[0].'#'
+                                .($restoreSpeed > 0 ? ' speed='.$restoreSpeed : '')
+                                .($modifiedComment === '' ? '' : ' '.$modifiedComment);
                             $newContent .= $newLine."\n";
                             $keep = false;
                         }
@@ -168,9 +185,9 @@ class SubVersioner implements NetworkBackendInterface
     /**
      * Obtain list of customer's IP addresses from hosts file.
      *
-     * This simple implementation checks the checked-out hosts file for
-     * occurrences of the given customer code in the line (usually present
-     * in the comment) and returns found IPs.
+     * Lines carrying the machine-readable `{code:XXXXX}` comment token are
+     * preferred; a bare-code substring match is only a fallback because it
+     * can false-match longer codes or IP octets.
      *
      * @param string $code Customer identifier or code to search for
      *
@@ -178,7 +195,8 @@ class SubVersioner implements NetworkBackendInterface
      */
     public function getCustomerIPs(string $code): array
     {
-        $ips = [];
+        $exactIps = [];
+        $looseIps = [];
 
         try {
             $this->checkoutRepo();
@@ -187,44 +205,37 @@ class SubVersioner implements NetworkBackendInterface
 
             if (!is_readable($hostsFile)) {
                 $this->log('Hosts file not readable: '.$hostsFile);
-                $this->cleanup();
 
-                return $ips;
+                return [];
             }
 
             $lines = file($hostsFile, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
+            $needle = '{code:'.$code.'}';
 
             foreach ($lines as $line) {
-                // Skip commented-out host definitions
-                if (\strlen($line) < 2 || $line[0] === '#') {
-                    // but still consider commented lines if they contain the code
-                    if (str_contains($line, $code)) {
-                        // extract ip if present before comment
-                        $parts = explode('#', $line, 2);
-                        $fields = preg_split('/\s+|\t+/', trim($parts[0]));
-                        if (isset($fields[0]) && filter_var($fields[0], FILTER_VALIDATE_IP)) {
-                            $ips[] = $fields[0];
-                        }
-                    }
+                $exact = str_contains($line, $needle);
 
+                if (!$exact && !str_contains($line, $code)) {
                     continue;
                 }
 
-                // If line contains the customer code (possibly in comment), extract IP
-                if (str_contains($line, $code)) {
-                    $parts = explode('#', $line, 2);
-                    $fields = preg_split('/\s+|\t+/', trim($parts[0]));
+                // extract ip if present before comment
+                $parts = explode('#', $line, 2);
+                $fields = preg_split('/\s+|\t+/', trim($parts[0]));
 
-                    if (isset($fields[0]) && filter_var($fields[0], FILTER_VALIDATE_IP)) {
-                        $ips[] = $fields[0];
+                if (isset($fields[0]) && filter_var($fields[0], \FILTER_VALIDATE_IP)) {
+                    if ($exact) {
+                        $exactIps[] = $fields[0];
+                    } else {
+                        $looseIps[] = $fields[0];
                     }
                 }
             }
-
-            $this->cleanup();
         } catch (\Exception $e) {
             $this->log('Error gathering customer IPs: '.$e->getMessage());
         }
+
+        $ips = $exactIps ?: $looseIps;
 
         // Remove duplicates and return
         return array_values(array_unique($ips));
@@ -354,12 +365,6 @@ class SubVersioner implements NetworkBackendInterface
         $this->rmdirRecursive($this->tempDir);
         self::$repoCleanedPaths[$this->tempDir] = true;
         unset(self::$repoCheckedOutPaths[$this->tempDir]);
-    }
-
-    public function __destruct()
-    {
-        // Ensure repository is cleaned up once when object is destroyed
-        $this->cleanup();
     }
 
     private function log(string $message): void

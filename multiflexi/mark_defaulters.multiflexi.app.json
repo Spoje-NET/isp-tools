@@ -19,7 +19,7 @@
   "requirements": [
     "AbraFlexi"
   ],
-  "homepage": "https://github.com/SpojeNET/isp-tools",
+  "homepage": "https://github.com/Spoje-NET/isp-tools",
   "executable": "abraflexi-mark-defaulters",
   "events": {
     "consumes": {
@@ -29,7 +29,7 @@
     },
     "emits": {
       "credit.checked": {
-        "description": "Customer credit checked; ODPOJENO label set on overdue internet customers — triggers blocknet"
+        "description": "Customer credit checked; ODPOJENO label set on overdue internet customers - blocknet is triggered by the resulting adresar update webhook"
       }
     }
   },
@@ -82,7 +82,7 @@
       },
       "defval": "typSmlouvy.INTERNET",
       "required": false,
-      "category": "Contracts"
+      "category": "Behavior"
     },
     "LABEL_THIRD_REMINDER": {
       "type": "string",
@@ -92,7 +92,7 @@
       },
       "defval": "UPOMINKA3",
       "required": false,
-      "category": "Labels"
+      "category": "Other"
     },
     "LABEL_DISCONNECTED": {
       "type": "string",
@@ -102,7 +102,7 @@
       },
       "defval": "ODPOJENO",
       "required": false,
-      "category": "Labels"
+      "category": "Other"
     },
     "LABEL_NODISCONNECT": {
       "type": "string",
@@ -112,7 +112,7 @@
       },
       "defval": "NEODPOJOVAT",
       "required": false,
-      "category": "Labels"
+      "category": "Other"
     },
     "LABEL_VIP": {
       "type": "string",
@@ -122,7 +122,7 @@
       },
       "defval": "VIP",
       "required": false,
-      "category": "Labels"
+      "category": "Other"
     },
     "RESULT_FILE": {
       "type": "string",

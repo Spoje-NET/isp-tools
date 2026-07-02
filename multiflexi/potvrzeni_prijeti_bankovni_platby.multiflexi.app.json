@@ -1,0 +1,134 @@
+{
+  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "schemaVersion": "3.4.0",
+  "uuid": "1a02ff07-de7b-495b-8e98-1204bb81ea66",
+  "version": "1.0.0",
+  "name": {
+    "en": "Bank Payment Received Notification",
+    "cs": "Potvrzení přijetí bankovní platby"
+  },
+  "description": {
+    "en": "Notifies the customer that their bank payment was received but awaits manual matching by accounting. Triggered when a payment could not be auto-matched (payment.unmatched). Unknown payer is reported as a warning, not an error.",
+    "cs": "Oznámí zákazníkovi, že jeho bankovní platba byla přijata, ale čeká na ruční spárování účetní. Spouští se, když platbu nelze spárovat automaticky (payment.unmatched). Neznámý plátce je hlášen jako varování, nikoli chyba."
+  },
+  "tags": [
+    "AbraFlexi",
+    "ISP",
+    "Payments",
+    "Email"
+  ],
+  "requirements": [
+    "AbraFlexi"
+  ],
+  "homepage": "https://github.com/Spoje-NET/isp-tools",
+  "executable": "abraflexi-potvrzeni-prijeti-bankovni-platby",
+  "events": {
+    "consumes": {
+      "payment.unmatched": {
+        "description": "Payment received but not auto-matched (DOCID = bank record code)"
+      }
+    }
+  },
+  "environment": {
+    "ABRAFLEXI_URL": {
+      "type": "url",
+      "description": {
+        "en": "AbraFlexi Server URI",
+        "cs": "Adresa serveru AbraFlexi"
+      },
+      "defval": "https://demo.flexibee.eu:5434",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_LOGIN": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Login",
+        "cs": "Přihlašovací jméno do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_PASSWORD": {
+      "type": "password",
+      "description": {
+        "en": "AbraFlexi password",
+        "cs": "Heslo do AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "ABRAFLEXI_COMPANY": {
+      "type": "string",
+      "description": {
+        "en": "AbraFlexi Company code",
+        "cs": "Kód společnosti v AbraFlexi"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "DOCID": {
+      "type": "string",
+      "description": {
+        "en": "Bank record code or numeric id of the received payment",
+        "cs": "Kód nebo číselné id bankovního dokladu přijaté platby"
+      },
+      "defval": "",
+      "required": true,
+      "category": "Behavior"
+    },
+    "PAYMENT_EVIDENCE": {
+      "type": "string",
+      "description": {
+        "en": "Payment evidence to load DOCID from: banka, pokladna or auto",
+        "cs": "Evidence, ze které se DOCID načte: banka, pokladna nebo auto"
+      },
+      "defval": "auto",
+      "required": false,
+      "category": "Behavior"
+    },
+    "EASE_FROM": {
+      "type": "email",
+      "description": {
+        "en": "Notification email sender address",
+        "cs": "Adresa odesílatele oznamovacího e-mailu"
+      },
+      "defval": "",
+      "required": false,
+      "category": "Other"
+    },
+    "MUTE": {
+      "type": "bool",
+      "description": {
+        "en": "Dry run - do not actually send the email",
+        "cs": "Zkušební běh - e-mail se ve skutečnosti neodešle"
+      },
+      "defval": "false",
+      "required": false,
+      "category": "Behavior"
+    },
+    "RESULT_FILE": {
+      "type": "string",
+      "description": {
+        "en": "Write output JSON report to this path",
+        "cs": "Zapsat výstupní JSON report na tuto cestu"
+      },
+      "defval": "php://stdout",
+      "required": false,
+      "category": "Behavior"
+    },
+    "EASE_LOGGER": {
+      "type": "string",
+      "description": {
+        "en": "Write log messages using",
+        "cs": "Způsob zápisu logovacích zpráv"
+      },
+      "defval": "console|syslog",
+      "required": false,
+      "category": "Behavior"
+    }
+  }
+}

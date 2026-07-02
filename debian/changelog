@@ -1,3 +1,20 @@
+isp-tools (1.1.0) stable; urgency=medium
+
+  * Fix blocknet: actually block resolved customer IPs and report real counts
+  * Fix unblocknet: label + overdue-invoice driven flow, removes ODPOJENO label
+  * Fix CWD-relative autoload path in BlockNet/UnblockNet
+  * SubVersioner preserves original speed as 'orig=' comment token and prefers
+    the {code:NNNNN} hosts convention when resolving customer IPs
+  * Implement Pipeline B: abraflexi-match-received-payment (exit 2 = unmatched),
+    abraflexi-potvrzeni-prijeti-uhrady (confirmation with invoice PDF),
+    abraflexi-potvrzeni-prijeti-bankovni-platby (unmatched payment notice)
+  * Add MultiFlexi app definitions for the three Pipeline B tools
+  * Install SpojeNet PSR-4 classes into /usr/share/php/isp-tools/SpojeNet
+  * Note: rename LABEL_NODISCONNECTED to LABEL_NODISCONNECT in deployed .env
+    files (the old key was never read; the NEODPOJOVAT default applied)
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Thu, 02 Jul 2026 00:00:00 +0200
+
 isp-tools (1.0.0) stable; urgency=medium
 
   * Initial Debian packaging

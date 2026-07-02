@@ -1,11 +1,12 @@
+#!/usr/bin/php
 <?php
 
 declare(strict_types=1);
 
 /**
- * This file is part of the AbraFlexi Reminder package
+ * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -13,114 +14,123 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace SpojeNet\System;
+\define('EASE_APPNAME', 'UnblockNet');
+
+require_once \dirname(__DIR__).'/vendor/autoload.php';
 
 use Ease\Shared;
 
 /**
- * System.spoje.net - Odblokuje internet všem kteří nedluží.
+ * Restores internet access for disconnected customers who no longer owe.
  *
- * @author     Vítězslav Dvořák <info@vitexsofware.cz>
- * @copyright  (G) 2017-2019 Vitex Software
+ * Flow:
+ *   1. Find customers with the LABEL_DISCONNECTED label (default: ODPOJENO).
+ *   2. Check AbraFlexi for unpaid overdue issued invoices per customer.
+ *   3. Customers without debt get all their IPs unblocked (original speed is
+ *      restored by the network backend, DEFAULT_SPEED is the fallback).
+ *   4. After a successful unblock the LABEL_DISCONNECTED label is removed
+ *      from the customer's address record.
  */
-\define('EASE_APPNAME', 'UnblockNet');
-
-require_once '../vendor/autoload.php';
-
 $options = getopt('o::e::', ['output::', 'environment::']);
 Shared::init(
-    ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY'],
-    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : '../.env'),
+    ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE'],
+    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : \dirname(__DIR__).'/.env'),
 );
-$exitcode = 0;
 
-$destination = \array_key_exists('output', $options) ? $options['output'] : \Ease\Shared::cfg('RESULT_FILE', 'php://stdout');
+$destination = \array_key_exists('output', $options) ? $options['output'] : Shared::cfg('RESULT_FILE', 'php://stdout');
+
+$report = [
+    'exitcode' => 0,
+    'status' => 'success',
+    'timestamp' => date(\DateTimeInterface::ATOM),
+    'message' => '',
+    'metrics' => ['disconnected_total' => 0, 'still_owing' => 0, 'unblocked' => 0, 'labels_cleared' => 0, 'no_ip' => 0, 'errors' => 0],
+    'customers' => [],
+];
 
 $deblocker = new \SpojeNet\DeBlocker();
-if (\Ease\Shared::cfg('APP_DEBUG', false)) {
+
+if (Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
-$contracts = $deblocker->getInetCustomers();
+$disconnected = $deblocker->getBlockedCustomers();
+$report['metrics']['disconnected_total'] = \count($disconnected);
 
-$adresses = $deblocker->getOnlineCustomers();
-$lmsIDs = [];
-$deblocker->addStatusMessage(\count($adresses).' '._('known customers'));
-$invcount = 0;
-$unblockedCount = 0;
-$customersWithoutCode = 0;
+if (empty($disconnected)) {
+    $report['message'] = 'No disconnected customers found.';
+    file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
-$customersToUnblock = [];
+    exit(0);
+}
 
-foreach ($deblocker->getInvoicesStatus(["typDokl eq 'code:FAKTURA' or typDokl eq 'code:ZALOHA'", 'limit' => 0]) as $companyCode => $companyInfo) {
-    ++$invcount;
+$debtors = $deblocker->getInvoicesStatus();
 
-    if ($companyInfo['balance'] >= 0) {
-        $company = \AbraFlexi\Functions::uncode($companyCode);
+$eligible = [];
 
-        if (\array_key_exists($company, $adresses)) {
-            $customer = $adresses[$company];
-            $customersToUnblock[] = $customer;
-            ++$unblockedCount;
-        } else {
-            ++$customersWithoutCode;
-            //            $reminder->addStatusMessage(sprintf(_('Invoice %s without CompanyCode') . ': ', implode(',', array_keys($companyInfo['invoice']))), 'warning');
-        }
+foreach ($disconnected as $kod => $address) {
+    if (\array_key_exists($kod, $debtors)) {
+        ++$report['metrics']['still_owing'];
+        $report['customers'][] = [
+            'kod' => $kod,
+            'action' => 'still_owes',
+            'unpaid_invoices' => $debtors[$kod]['count'],
+            'due' => $debtors[$kod]['due'],
+        ];
+
+        continue;
+    }
+
+    $eligible[] = (string) $kod;
+}
+
+$results = $deblocker->unblockCustomers($eligible, (int) Shared::cfg('DEFAULT_SPEED', 0));
+
+foreach ($results as $kod => $result) {
+    if ($result['failed'] > 0) {
+        $report['exitcode'] = 1;
+        ++$report['metrics']['errors'];
+        $report['customers'][] = ['kod' => $kod, 'action' => 'error_unblocking', 'ips' => $result['ips']];
+
+        continue;
+    }
+
+    if ($result['ips'] === []) {
+        ++$report['metrics']['no_ip'];
+        $action = 'no_ip_label_cleared';
+    } else {
+        ++$report['metrics']['unblocked'];
+        $action = 'unblocked';
+    }
+
+    if ($deblocker->removeDisconnectedLabel((string) $kod)) {
+        ++$report['metrics']['labels_cleared'];
+        $report['customers'][] = ['kod' => $kod, 'action' => $action, 'ips' => $result['ips']];
+    } else {
+        $report['exitcode'] = 1;
+        ++$report['metrics']['errors'];
+        $report['customers'][] = ['kod' => $kod, 'action' => 'error_removing_label', 'ips' => $result['ips']];
     }
 }
 
-$deblocker->unblockCustomers($customersToUnblock);
+$m = $report['metrics'];
+$report['message'] = sprintf(
+    'Unblocked %d of %d disconnected customers. Still owing: %d. Labels cleared: %d. No IP: %d. Errors: %d.',
+    $m['unblocked'],
+    $m['disconnected_total'],
+    $m['still_owing'],
+    $m['labels_cleared'],
+    $m['no_ip'],
+    $m['errors'],
+);
 
-$deblocker->addStatusMessage($invcount.' '._('invoices checked'));
-
-// Generate MultiFlexi-compliant report
-$hasErrors = false;
-$hasWarnings = ($customersWithoutCode > 0);
-
-foreach ($deblocker->getStatusMessages() as $message) {
-    if (isset($message['type']) && $message['type'] === 'error') {
-        $hasErrors = true;
-        $exitcode = 1;
-
-        break;
-    }
+if ($report['exitcode'] !== 0) {
+    $report['status'] = 'error';
+} elseif ($m['no_ip'] > 0) {
+    $report['status'] = 'warning';
 }
 
-if ($hasErrors) {
-    $status = 'error';
-    $reportMessage = 'Internet unblocking completed with errors';
-} elseif ($hasWarnings) {
-    $status = 'warning';
-    $reportMessage = sprintf(
-        'Unblocked %d clients with positive balance. %d invoices checked. %d customers without company code.',
-        $unblockedCount,
-        $invcount,
-        $customersWithoutCode,
-    );
-} else {
-    $status = 'success';
-    $reportMessage = sprintf(
-        'Successfully unblocked internet for %d clients with positive balance. %d invoices checked.',
-        $unblockedCount,
-        $invcount,
-    );
-}
-
-$report = [
-    'producer' => 'UnblockNet',
-    'status' => $status,
-    'timestamp' => date('c'),
-    'message' => $reportMessage,
-    'metrics' => [
-        'total_customers' => \count($adresses),
-        'invoices_checked' => $invcount,
-        'clients_unblocked' => $unblockedCount,
-        'customers_without_code' => $customersWithoutCode,
-        'exit_code' => $exitcode,
-    ],
-];
-
-$written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT));
+$written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 $deblocker->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
 
-exit($exitcode);
+exit($report['exitcode']);

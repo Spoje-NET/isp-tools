@@ -11,7 +11,12 @@
     }
   ],
   "bin": [
-    "bin/abraflexi-mark-defaulters"
+    "bin/abraflexi-mark-defaulters",
+    "bin/abraflexi-match-received-payment",
+    "bin/abraflexi-potvrzeni-prijeti-bankovni-platby",
+    "bin/abraflexi-potvrzeni-prijeti-uhrady",
+    "bin/blocknet",
+    "bin/unblocknet"
   ],
   "require": {
     "php": ">=8.1",

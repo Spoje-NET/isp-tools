@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the AbraFlexi Reminder package
+ * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -34,82 +34,83 @@ class DeBlockerTest extends TestCase
         $this->deblocker = new DeBlocker($this->mockAdapter);
     }
 
-    public function testBlockCustomersCallsAdapterForEachIp(): void
+    public function testBlockCustomersBlocksEachResolvedIp(): void
     {
-        $customerIps = [
-            ['ip' => '192.168.1.10'],
-            ['ip' => '192.168.1.20'],
-            ['ip' => '192.168.1.30'],
-        ];
-
+        $this->mockAdapter->method('getCustomerIPs')->willReturnMap([
+            ['CUST1', ['192.168.1.10', '192.168.1.20']],
+            ['CUST2', ['192.168.1.30']],
+        ]);
         $this->mockAdapter->expects($this->exactly(3))
             ->method('blockIp')
             ->willReturn(true);
 
-        $result = $this->deblocker->blockCustomers($customerIps);
+        $results = $this->deblocker->blockCustomers(['CUST1', 'CUST2']);
 
-        $this->assertTrue($result);
+        $this->assertSame(
+            [
+                'CUST1' => ['ips' => ['192.168.1.10', '192.168.1.20'], 'blocked' => 2, 'failed' => 0],
+                'CUST2' => ['ips' => ['192.168.1.30'], 'blocked' => 1, 'failed' => 0],
+            ],
+            $results,
+        );
     }
 
-    public function testUnblockCustomersCallsAdapterForEachIp(): void
+    public function testBlockCustomersCountsFailures(): void
     {
-        $customerIps = [
-            ['ip' => '192.168.1.10', 'speed' => 100],
-            ['ip' => '192.168.1.20', 'speed' => 50],
-        ];
-
-        $this->mockAdapter->expects($this->exactly(2))
-            ->method('unblockIp')
-            ->willReturn(true);
-
-        $result = $this->deblocker->unblockCustomers($customerIps);
-
-        $this->assertTrue($result);
-    }
-
-    public function testBlockCustomersReturnsFalseWhenAdapterFails(): void
-    {
-        $customerIps = [
-            ['ip' => '192.168.1.10'],
-            ['ip' => '192.168.1.20'],
-        ];
-
+        $this->mockAdapter->method('getCustomerIPs')->willReturn(['192.168.1.10', '192.168.1.20']);
         $this->mockAdapter->expects($this->exactly(2))
             ->method('blockIp')
             ->willReturnOnConsecutiveCalls(true, false);
 
-        $result = $this->deblocker->blockCustomers($customerIps);
+        $results = $this->deblocker->blockCustomers(['CUST1']);
 
-        $this->assertFalse($result);
+        $this->assertSame(1, $results['CUST1']['blocked']);
+        $this->assertSame(1, $results['CUST1']['failed']);
     }
 
-    public function testUnblockCustomersReturnsFalseWhenAdapterFails(): void
+    public function testBlockCustomersWithoutIpsDoesNotBlock(): void
     {
-        $customerIps = [
-            ['ip' => '192.168.1.10', 'speed' => 100],
-            ['ip' => '192.168.1.20', 'speed' => 50],
-        ];
+        $this->mockAdapter->method('getCustomerIPs')->willReturn([]);
+        $this->mockAdapter->expects($this->never())->method('blockIp');
 
+        $results = $this->deblocker->blockCustomers(['CUST1']);
+
+        $this->assertSame(['ips' => [], 'blocked' => 0, 'failed' => 0], $results['CUST1']);
+    }
+
+    public function testUnblockCustomersUsesFallbackSpeed(): void
+    {
+        $this->mockAdapter->method('getCustomerIPs')->willReturn(['192.168.1.10']);
+        $this->mockAdapter->expects($this->once())
+            ->method('unblockIp')
+            ->with('192.168.1.10', 42)
+            ->willReturn(true);
+
+        $results = $this->deblocker->unblockCustomers(['CUST1'], 42);
+
+        $this->assertSame(['ips' => ['192.168.1.10'], 'unblocked' => 1, 'failed' => 0], $results['CUST1']);
+    }
+
+    public function testUnblockCustomersCountsFailures(): void
+    {
+        $this->mockAdapter->method('getCustomerIPs')->willReturn(['192.168.1.10', '192.168.1.20']);
         $this->mockAdapter->expects($this->exactly(2))
             ->method('unblockIp')
             ->willReturnOnConsecutiveCalls(true, false);
 
-        $result = $this->deblocker->unblockCustomers($customerIps);
+        $results = $this->deblocker->unblockCustomers(['CUST1']);
 
-        $this->assertFalse($result);
+        $this->assertSame(1, $results['CUST1']['unblocked']);
+        $this->assertSame(1, $results['CUST1']['failed']);
     }
 
     public function testBlockCustomersWithEmptyArray(): void
     {
-        $result = $this->deblocker->blockCustomers([]);
-
-        $this->assertTrue($result);
+        $this->assertSame([], $this->deblocker->blockCustomers([]));
     }
 
     public function testUnblockCustomersWithEmptyArray(): void
     {
-        $result = $this->deblocker->unblockCustomers([]);
-
-        $this->assertTrue($result);
+        $this->assertSame([], $this->deblocker->unblockCustomers([]));
     }
 }

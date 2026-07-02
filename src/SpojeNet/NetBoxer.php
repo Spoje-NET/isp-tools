@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * This file is part of the AbraFlexi Reminder package
+ * This file is part of the ISP Tools package
  *
- * https://github.com/SpojeNET/isp-tools
+ * https://github.com/Spoje-NET/isp-tools
  *
  * (c) Spoje.Net <https://spoje.net/>
  *
@@ -114,8 +114,9 @@ class NetBoxer implements NetworkBackendInterface
 
                 if (!$matches && \is_array($customFields)) {
                     foreach ($customFields as $val) {
-                        if (is_string($val) && str_contains($val, $code)) {
+                        if (\is_string($val) && str_contains($val, $code)) {
                             $matches = true;
+
                             break;
                         }
                     }
@@ -124,13 +125,14 @@ class NetBoxer implements NetworkBackendInterface
                 if ($matches && !empty($item['address'])) {
                     $address = $item['address'];
                     $ip = explode('/', $address)[0];
-                    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+
+                    if (filter_var($ip, \FILTER_VALIDATE_IP)) {
                         $ips[] = $ip;
                     }
                 }
             }
         } catch (\Exception $e) {
-            $this->log('NetBox lookup failed: '.$e->getMessage());
+            error_log('NetBox lookup failed: '.$e->getMessage());
         }
 
         return array_values(array_unique($ips));

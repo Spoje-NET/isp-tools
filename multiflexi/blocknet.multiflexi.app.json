@@ -20,9 +20,8 @@
   "executable": "blocknet",
   "events": {
     "consumes": {
-      "credit.checked": {
-        "description": "Customer credit was checked",
-        "format": "json"
+      "adresar.updated": {
+        "description": "AbraFlexi address record updated - reacts when mark-defaulters sets the ODPOJENO label"
       }
     },
     "emits": {

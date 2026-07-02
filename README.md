@@ -61,9 +61,17 @@ abraflexi-match-received-payment
     - notifies customer their payment was received but awaits manual matching
 ```
 
+> **Note on Pipeline B stage 2:** rules 4–6 below work today — the
+> `multiflexi-event-processor` reacts to AbraFlexi webhook changes and the
+> matched invoice update (rule 6) is itself a `faktura-vydana` webhook change.
+> Rule 7 (`payment.unmatched`) requires the event processor to react to job
+> exit codes / `job.completed`, which it does not support yet; until then run
+> `abraflexi-potvrzeni-prijeti-bankovni-platby` manually or from a wrapper
+> that inspects the matcher's exit code.
+
 ## MultiFlexi Applications
 
-This project provides three MultiFlexi applications:
+This project provides six MultiFlexi applications:
 
 ### MarkDefaulters (`abraflexi-mark-defaulters`)
 
@@ -75,13 +83,57 @@ Customers with only VoIP, IpTV, Hosting or Housing contracts are **not** marked
 for internet disconnection even if their invoices are overdue. Set `INET_CONTRACT_TYPE`
 to the AbraFlexi `typSmlouvyK` code of internet contracts to enable precise filtering.
 
-### BlockNet
+### BlockNet (`blocknet`)
 
 Blocks internet access for all clients with the `ODPOJENO` (DISCONNECTED) label in AbraFlexi.
+Customers labelled `VIP` or `NEODPOJOVAT` are skipped. Customer IP addresses are
+resolved through the configured network backend and each IP is blocked by setting
+its speed to 0.
 
-### UnblockNet
+### UnblockNet (`unblocknet`)
 
-Unblocks internet access for all clients who are not in debt according to AbraFlexi invoices.
+Restores internet access for disconnected customers who no longer owe:
+
+1. Finds customers with the `ODPOJENO` label.
+2. Checks AbraFlexi for unpaid **overdue** issued invoices per customer.
+3. Customers without debt get all their IPs unblocked (the backend restores the
+   original speed recorded at block time; `DEFAULT_SPEED` is the fallback).
+4. After a successful unblock the `ODPOJENO` label is removed from the customer.
+
+### MatchReceivedPayment (`abraflexi-match-received-payment`)
+
+Matches a received bank/cash payment to an unpaid issued invoice by variable
+symbol and links it via AbraFlexi payment pairing (`sparovani`).
+
+- Env: `DOCUMENTID` (record code or numeric id, required), `PAYMENT_EVIDENCE`
+  (`banka|pokladna|auto`, default `auto`), `MATCH_OVERPAY_MODE`
+  (`settle|manual`, default `settle`), `LABEL_OVERPAY`, `LABEL_INVOICE_MISSING`,
+  `LABEL_UNIDENTIFIED`.
+- Exit codes: `0` = matched and linked, `2` = received but cannot be
+  auto-matched (unknown variable symbol, ambiguity, or overpayment in `manual`
+  mode) — emits `payment.unmatched`, `1` = error.
+- Underpayment is linked as a partial payment (`castecnaUhrada`).
+
+### PotvrzeniPrijetiUhrady (`abraflexi-potvrzeni-prijeti-uhrady`)
+
+Sends the customer a payment-received confirmation email with the tax document
+(invoice PDF) attached. Skips invoices that are not (at least partially) paid,
+so it is safe to trigger from a generic `faktura-vydana` update rule.
+
+- Env: `DOCID` (faktura-vydana code, required), `EASE_FROM`, `MUTE`
+  (`true` = dry run).
+- Exit codes: `0` = sent (or dry run / not paid), `1` = error (unknown
+  document, no email, send failure).
+
+### PotvrzeniPrijetiBankovniPlatby (`abraflexi-potvrzeni-prijeti-bankovni-platby`)
+
+Notifies the customer that their bank payment was received but awaits manual
+matching by accounting.
+
+- Env: `DOCID` (bank record code or numeric id, required), `PAYMENT_EVIDENCE`,
+  `EASE_FROM`, `MUTE`.
+- Exit codes: `0` = notified (unknown payer is a warning, not an error),
+  `1` = error.
 
 ## Installation
 
@@ -115,8 +167,23 @@ cp .env.example .env
 #### Customer Labels
 
 - `LABEL_DISCONNECTED` - Label for disconnected customers (default: `ODPOJENO`)
-- `LABEL_NODISCONNECTED` - Label for customers not to disconnect (default: `NEODPOJOVAT`)
+- `LABEL_NODISCONNECT` - Label for customers not to disconnect (default: `NEODPOJOVAT`)
 - `LABEL_VIP` - VIP customer label (default: `VIP`)
+- `LABEL_THIRD_REMINDER` - Label set by abraflexi-reminder after the 3rd reminder (default: `UPOMINKA3`)
+
+#### Payment Matching (Pipeline B)
+
+- `MATCH_OVERPAY_MODE` - Overpayment handling: `settle` or `manual` (default: `settle`)
+- `PAYMENT_EVIDENCE` - Evidence to load payments from: `banka`, `pokladna` or `auto` (default: `auto`)
+- `LABEL_OVERPAY` - Label for overpaid documents (default: `PREPLATEK`)
+- `LABEL_INVOICE_MISSING` - Label for payments without a matching invoice (default: `CHYBIFAKTURA`)
+- `LABEL_UNIDENTIFIED` - Label for unidentified payments (default: `NEIDENTIFIKOVANO`)
+- `EASE_FROM` - Sender address for confirmation emails
+- `MUTE` - `true` = dry run, confirmation emails are not actually sent
+
+#### Unblocking
+
+- `DEFAULT_SPEED` - Fallback speed used when the backend has no stored original speed (default: `0`)
 
 #### Subversion Repository (Legacy Backend)
 
@@ -125,6 +192,12 @@ cp .env.example .env
 - `SVNURL` - Subversion repository URL
 - `SVNBIN` - Path to subversion binary (default: `/usr/bin/svn`)
 - `LOGFILE` - Path to log file for operations
+
+Blocking rewrites the hosts-file comment of the customer's IP line to
+`# speed=0 orig=<previous speed>`; unblocking restores the speed recorded in
+the `orig=` token (falling back to `DEFAULT_SPEED` when the line never carried
+a `speed=` value). Customer IPs are resolved preferably by the machine-readable
+`{code:XXXXX}` comment token.
 
 #### NetBox API (Modern Backend)
 
@@ -160,6 +233,9 @@ The MultiFlexi application definitions are located in the `multiflexi/` director
 - `mark_defaulters.multiflexi.app.json` - MarkDefaulters application definition
 - `blocknet.multiflexi.app.json` - BlockNet application definition
 - `unblocknet.multiflexi.app.json` - UnblockNet application definition
+- `match_received_payment.multiflexi.app.json` - MatchReceivedPayment application definition
+- `potvrzeni_prijeti_uhrady.multiflexi.app.json` - PotvrzeniPrijetiUhrady application definition
+- `potvrzeni_prijeti_bankovni_platby.multiflexi.app.json` - PotvrzeniPrijetiBankovniPlatby application definition
 
 ### Setting up event rules
 
@@ -280,15 +356,19 @@ NETBOXTOKEN=your-api-token-here
 
 To switch from Subversion-based management to NetBox:
 
-1. Update `DeBlocker.php` constructor to use `NetBoxer` instead of `SubVersioner`:
+1. Pass a `NetBoxer` instance to the `DeBlocker` constructor (it defaults to
+   `SubVersioner`):
 
    ```php
-   $this->adapter = new NetBoxer();
+   $deblocker = new \SpojeNet\DeBlocker(new \SpojeNet\NetBoxer());
    ```
 
 2. Ensure all customer IPs are properly configured in NetBox with speed custom fields
 
 3. Test blocking/unblocking operations
+
+> **Note:** the NetBox backend currently implements only customer IP lookup;
+> its `blockIp()`/`unblockIp()` operations are not implemented yet.
 
 ### NetBox API Requirements
 
@@ -320,7 +400,7 @@ The test repository allows testing blocking/unblocking operations without affect
 
 - PHP >= 8.1
 - AbraFlexi account
-- MultiFlexi Core library
+- vitexsoftware/abraflexi-bricks library
 - NetBox (optional, for modern infrastructure management)
 
 ## License
