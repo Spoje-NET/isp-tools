@@ -12,13 +12,17 @@ Vcs-Browser: https://github.com/Spoje-NET/isp-tools
 Package: isp-tools
 Architecture: all
 Depends: ${misc:Depends}, php-cli, php-spojenet-abraflexi (>= 3.4), php-vitexsoftware-abraflexi-bricks
+Recommends: subversion
 Description: ISP tools for AbraFlexi-based internet access management
  Utilities for managing internet customer disconnection/reconnection
  based on AbraFlexi invoice status and customer labels.
  .
  Includes: abraflexi-mark-defaulters (bridge UPOMINKA3 → ODPOJENO),
  blocknet (disconnect overdue internet customers),
- unblocknet (reconnect cleared customers).
+ unblocknet (reconnect cleared customers),
+ isp-match-received-payment (pair bank/cash payments to invoices),
+ isp-potvrzeni-prijeti-uhrady (payment confirmation with invoice PDF),
+ isp-potvrzeni-prijeti-bankovni-platby (unmatched payment notification).
 
 Package: multiflexi-isp-tools
 Architecture: all

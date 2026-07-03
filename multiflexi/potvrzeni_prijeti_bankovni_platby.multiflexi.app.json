@@ -21,7 +21,7 @@
     "AbraFlexi"
   ],
   "homepage": "https://github.com/Spoje-NET/isp-tools",
-  "executable": "abraflexi-potvrzeni-prijeti-bankovni-platby",
+  "executable": "isp-potvrzeni-prijeti-bankovni-platby",
   "events": {
     "consumes": {
       "payment.unmatched": {

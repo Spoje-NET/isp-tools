@@ -39,7 +39,7 @@ multiflexi-event-processor
         │ rule: banka/pokladna create → match-received-payment runtemplate
         │       env_mapping: {"DOCUMENTID": "recordid"}
         ▼
-abraflexi-match-received-payment
+isp-match-received-payment
   exit 0: payment matched to invoice
         │
         │ AbraFlexi: faktura-vydana updated (linked to payment)
@@ -49,7 +49,7 @@ abraflexi-match-received-payment
         │ rule: faktura-vydana update → potvrzeni-prijeti-uhrady runtemplate
         │       env_mapping: {"DOCID": "recordid"}
         ▼
-  abraflexi-potvrzeni-prijeti-uhrady
+  isp-potvrzeni-prijeti-uhrady
     - sends tax document confirmation to customer
 
   exit 2: payment found but not matched (unknown varsym / under/overpayment)
@@ -57,7 +57,7 @@ abraflexi-match-received-payment
         │ rule: payment.unmatched → potvrzeni-prijeti-bankovni-platby runtemplate
         │       env_mapping: {"DOCID": "recordid"}
         ▼
-  abraflexi-potvrzeni-prijeti-bankovni-platby
+  isp-potvrzeni-prijeti-bankovni-platby
     - notifies customer their payment was received but awaits manual matching
 ```
 
@@ -66,7 +66,7 @@ abraflexi-match-received-payment
 > matched invoice update (rule 6) is itself a `faktura-vydana` webhook change.
 > Rule 7 (`payment.unmatched`) requires the event processor to react to job
 > exit codes / `job.completed`, which it does not support yet; until then run
-> `abraflexi-potvrzeni-prijeti-bankovni-platby` manually or from a wrapper
+> `isp-potvrzeni-prijeti-bankovni-platby` manually or from a wrapper
 > that inspects the matcher's exit code.
 
 ## MultiFlexi Applications
@@ -100,7 +100,7 @@ Restores internet access for disconnected customers who no longer owe:
    original speed recorded at block time; `DEFAULT_SPEED` is the fallback).
 4. After a successful unblock the `ODPOJENO` label is removed from the customer.
 
-### MatchReceivedPayment (`abraflexi-match-received-payment`)
+### MatchReceivedPayment (`isp-match-received-payment`)
 
 Matches a received bank/cash payment to an unpaid issued invoice by variable
 symbol and links it via AbraFlexi payment pairing (`sparovani`).
@@ -114,7 +114,7 @@ symbol and links it via AbraFlexi payment pairing (`sparovani`).
   mode) — emits `payment.unmatched`, `1` = error.
 - Underpayment is linked as a partial payment (`castecnaUhrada`).
 
-### PotvrzeniPrijetiUhrady (`abraflexi-potvrzeni-prijeti-uhrady`)
+### PotvrzeniPrijetiUhrady (`isp-potvrzeni-prijeti-uhrady`)
 
 Sends the customer a payment-received confirmation email with the tax document
 (invoice PDF) attached. Skips invoices that are not (at least partially) paid,
@@ -125,7 +125,7 @@ so it is safe to trigger from a generic `faktura-vydana` update rule.
 - Exit codes: `0` = sent (or dry run / not paid), `1` = error (unknown
   document, no email, send failure).
 
-### PotvrzeniPrijetiBankovniPlatby (`abraflexi-potvrzeni-prijeti-bankovni-platby`)
+### PotvrzeniPrijetiBankovniPlatby (`isp-potvrzeni-prijeti-bankovni-platby`)
 
 Notifies the customer that their bank payment was received but awaits manual
 matching by accounting.

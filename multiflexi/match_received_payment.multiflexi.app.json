@@ -21,7 +21,7 @@
     "AbraFlexi"
   ],
   "homepage": "https://github.com/Spoje-NET/isp-tools",
-  "executable": "abraflexi-match-received-payment",
+  "executable": "isp-match-received-payment",
   "exitCodes": {
     "0": {
       "description": {
@@ -56,10 +56,10 @@
     },
     "emits": {
       "invoice.matched": {
-        "description": "Payment was matched and linked to an issued invoice — triggers abraflexi-potvrzeni-prijeti-uhrady"
+        "description": "Payment was matched and linked to an issued invoice — triggers isp-potvrzeni-prijeti-uhrady"
       },
       "payment.unmatched": {
-        "description": "Payment received but not auto-matched (exit code 2) — triggers abraflexi-potvrzeni-prijeti-bankovni-platby"
+        "description": "Payment received but not auto-matched (exit code 2) — triggers isp-potvrzeni-prijeti-bankovni-platby"
       }
     }
   },

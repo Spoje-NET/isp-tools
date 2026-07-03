@@ -1,3 +1,16 @@
+isp-tools (1.1.1) stable; urgency=medium
+
+  * Rename Pipeline B executables to avoid file conflicts with the
+    abraflexi-matcher and abraflexi-mailer packages, which already ship
+    binaries of the same names:
+    abraflexi-match-received-payment -> isp-match-received-payment,
+    abraflexi-potvrzeni-prijeti-uhrady -> isp-potvrzeni-prijeti-uhrady,
+    abraflexi-potvrzeni-prijeti-bankovni-platby ->
+    isp-potvrzeni-prijeti-bankovni-platby
+  * Add Recommends: subversion (default SubVersioner network backend)
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Fri, 03 Jul 2026 00:00:00 +0200
+
 isp-tools (1.1.0) stable; urgency=medium
 
   * Fix blocknet: actually block resolved customer IPs and report real counts

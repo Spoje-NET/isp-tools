@@ -21,7 +21,7 @@
     "AbraFlexi"
   ],
   "homepage": "https://github.com/Spoje-NET/isp-tools",
-  "executable": "abraflexi-potvrzeni-prijeti-uhrady",
+  "executable": "isp-potvrzeni-prijeti-uhrady",
   "events": {
     "consumes": {
       "invoice.matched": {

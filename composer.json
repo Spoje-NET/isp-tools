@@ -12,9 +12,9 @@
   ],
   "bin": [
     "bin/abraflexi-mark-defaulters",
-    "bin/abraflexi-match-received-payment",
-    "bin/abraflexi-potvrzeni-prijeti-bankovni-platby",
-    "bin/abraflexi-potvrzeni-prijeti-uhrady",
+    "bin/isp-match-received-payment",
+    "bin/isp-potvrzeni-prijeti-bankovni-platby",
+    "bin/isp-potvrzeni-prijeti-uhrady",
     "bin/blocknet",
     "bin/unblocknet"
   ],
