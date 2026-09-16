@@ -1,3 +1,14 @@
+isp-tools (1.1.4) stable; urgency=medium
+
+  * Fix DeBlocker::removeDisconnectedLabel() silently failing to remove the
+    ODPOJENO label: it wrote the remaining label list back with a plain
+    update, but AbraFlexi merges into the existing 'stitky' field on update
+    rather than replacing it, so the label never actually disappeared even
+    though the job logged success. Now uses Adresar::unsetLabel(), which
+    sends the required 'stitky@removeAll' directive
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 16 Sep 2026 00:00:00 +0200
+
 isp-tools (1.1.3) stable; urgency=medium
 
   * Fix all six CLI entry points (BlockNet, UnblockNet, MatchReceivedPayment,

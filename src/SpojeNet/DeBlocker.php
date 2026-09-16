@@ -218,8 +218,10 @@ class DeBlocker extends \Ease\Sand
     /**
      * Remove the LABEL_DISCONNECTED label from a customer address record.
      *
-     * AbraFlexi replaces the whole label set on update, so the full list of
-     * remaining labels is written back.
+     * A plain update of the 'stitky' field merges into the existing label
+     * set rather than replacing it, so removal must go through
+     * Adresar::unsetLabel(), which sends the 'stitky@removeAll' directive
+     * AbraFlexi requires to actually drop a label.
      */
     public function removeDisconnectedLabel(string $code): bool
     {
@@ -231,15 +233,7 @@ class DeBlocker extends \Ease\Sand
             return true;
         }
 
-        unset($labels[$diconnectedLabel]);
-
-        $addresser->dataReset();
-        $addresser->setData([
-            'id' => \AbraFlexi\Functions::code($code),
-            'stitky' => implode(',', array_keys($labels)),
-        ], true);
-
-        $removed = (bool) $addresser->sync();
+        $removed = $addresser->unsetLabel($diconnectedLabel);
         $this->addStatusMessage(
             sprintf(_('Label %s removal for customer %s'), $diconnectedLabel, $code),
             $removed ? 'success' : 'error',
