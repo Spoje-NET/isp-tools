@@ -113,4 +113,28 @@ class DeBlockerTest extends TestCase
     {
         $this->assertSame([], $this->deblocker->unblockCustomers([]));
     }
+
+    public function testGetBlockedCustomersAll(): void
+    {
+        $mockCustomer = $this->createMock(\AbraFlexi\Bricks\Customer::class);
+        $mockCustomer->expects($this->once())
+            ->method('getCustomerList')
+            ->with(['stitky' => 'ODPOJENO', 'limit' => 0])
+            ->willReturn(['CUST1' => ['id' => 1, 'kod' => 'CUST1']]);
+
+        $deblocker = new DeBlocker($this->mockAdapter, $mockCustomer);
+        $this->assertSame(['CUST1' => ['id' => 1, 'kod' => 'CUST1']], $deblocker->getBlockedCustomers());
+    }
+
+    public function testGetBlockedCustomersSingle(): void
+    {
+        $mockCustomer = $this->createMock(\AbraFlexi\Bricks\Customer::class);
+        $mockCustomer->expects($this->once())
+            ->method('getCustomerList')
+            ->with(['stitky' => 'ODPOJENO', 'limit' => 0, 'id' => 'code:CUST1'])
+            ->willReturn(['CUST1' => ['id' => 1, 'kod' => 'CUST1']]);
+
+        $deblocker = new DeBlocker($this->mockAdapter, $mockCustomer);
+        $this->assertSame(['CUST1' => ['id' => 1, 'kod' => 'CUST1']], $deblocker->getBlockedCustomers('CUST1'));
+    }
 }

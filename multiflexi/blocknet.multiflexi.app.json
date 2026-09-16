@@ -31,6 +31,16 @@
     }
   },
   "environment": {
+    "CUSTOMER": {
+      "type": "string",
+      "description": {
+        "en": "Customer code or ID (adresar) to disconnect. If empty, all disconnected customers are processed.",
+        "cs": "Kód nebo ID zákazníka (adresar) k odpojení. Pokud je prázdné, zpracují se všichni odpojení zákazníci."
+      },
+      "defval": "",
+      "required": false,
+      "category": "Behavior"
+    },
     "ABRAFLEXI_COMPANY": {
       "type": "string",
       "description": {

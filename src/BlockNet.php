@@ -28,13 +28,14 @@ use Ease\Shared;
  * Customer IP addresses are resolved and blocked through the configured
  * network backend (SubVersioner by default).
  */
-$options = getopt('o::e::', ['output::', 'environment::']);
+$options = getopt('o::e::c::', ['output::', 'environment::', 'customer::']);
 Shared::init(
     ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE'],
     \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : \dirname(__DIR__).'/.env'),
 );
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : Shared::cfg('RESULT_FILE', 'php://stdout');
+$customerCode = \array_key_exists('customer', $options) ? (string) $options['customer'] : (\array_key_exists('c', $options) ? (string) $options['c'] : (string) Shared::cfg('CUSTOMER', Shared::cfg('ABRAFLEXI_CUSTOMER', '')));
 
 $labelVip = Shared::cfg('LABEL_VIP', 'VIP');
 $labelNoDisconnect = Shared::cfg('LABEL_NODISCONNECT', 'NEODPOJOVAT');
@@ -54,7 +55,7 @@ if (Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
-$addresses = $deblocker->getBlockedCustomers();
+$addresses = $deblocker->getBlockedCustomers($customerCode !== '' ? $customerCode : null);
 $report['metrics']['disconnected_total'] = \count($addresses);
 
 $toBlock = [];

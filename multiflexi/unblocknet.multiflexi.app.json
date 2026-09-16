@@ -22,6 +22,9 @@
     "consumes": {
       "adresar.updated": {
         "description": "AbraFlexi address record updated - reacts when reminder labels are cleared after payment"
+      },
+      "reminder.labels.cleared": {
+        "description": "Triggered when reminder labels are cleared by abraflexi-reminder-clean-labels"
       }
     },
     "emits": {
@@ -31,6 +34,16 @@
     }
   },
   "environment": {
+    "CUSTOMER": {
+      "type": "string",
+      "description": {
+        "en": "Customer code or ID (adresar) to unblock. If empty, all eligible disconnected customers are processed.",
+        "cs": "Kód nebo ID zákazníka (adresar) k odblokování. Pokud je prázdné, zpracují se všichni odpojení zákazníci."
+      },
+      "defval": "",
+      "required": false,
+      "category": "Behavior"
+    },
     "ABRAFLEXI_COMPANY": {
       "type": "string",
       "description": {

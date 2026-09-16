@@ -31,13 +31,14 @@ use Ease\Shared;
  *   4. After a successful unblock the LABEL_DISCONNECTED label is removed
  *      from the customer's address record.
  */
-$options = getopt('o::e::', ['output::', 'environment::']);
+$options = getopt('o::e::c::', ['output::', 'environment::', 'customer::']);
 Shared::init(
     ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE'],
     \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : \dirname(__DIR__).'/.env'),
 );
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : Shared::cfg('RESULT_FILE', 'php://stdout');
+$customerCode = \array_key_exists('customer', $options) ? (string) $options['customer'] : (\array_key_exists('c', $options) ? (string) $options['c'] : (string) Shared::cfg('CUSTOMER', Shared::cfg('ABRAFLEXI_CUSTOMER', '')));
 
 $report = [
     'exitcode' => 0,
@@ -54,7 +55,7 @@ if (Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
-$disconnected = $deblocker->getBlockedCustomers();
+$disconnected = $deblocker->getBlockedCustomers($customerCode !== '' ? $customerCode : null);
 $report['metrics']['disconnected_total'] = \count($disconnected);
 
 if (empty($disconnected)) {
@@ -64,7 +65,7 @@ if (empty($disconnected)) {
     exit(0);
 }
 
-$debtors = $deblocker->getInvoicesStatus();
+$debtors = $deblocker->getInvoicesStatus($customerCode !== '' ? $customerCode : null);
 
 $eligible = [];
 

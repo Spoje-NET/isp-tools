@@ -69,12 +69,20 @@ class DeBlocker extends \Ease\Sand
     /**
      * Customers currently marked for disconnection.
      *
+     * @param string|null $customer Optional customer code or ID to query for a single customer
+     *
      * @return array<string, array<string, mixed>> address records keyed by customer code
      */
-    public function getBlockedCustomers(): array
+    public function getBlockedCustomers(?string $customer = null): array
     {
         $diconnectedLabel = \Ease\Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO');
-        $adresses = $this->customer->getCustomerList(['stitky' => $diconnectedLabel, 'limit' => 0]);
+        $conditions = ['stitky' => $diconnectedLabel, 'limit' => 0];
+
+        if (!empty($customer)) {
+            $conditions['id'] = is_numeric($customer) ? (int) $customer : \AbraFlexi\Functions::code($customer);
+        }
+
+        $adresses = $this->customer->getCustomerList($conditions);
         $this->addStatusMessage(\count($adresses).' '.sprintf(_('customers with label %s'), $diconnectedLabel));
 
         return $adresses;
@@ -83,20 +91,28 @@ class DeBlocker extends \Ease\Sand
     /**
      * Customers with unpaid overdue issued invoices.
      *
+     * @param string|null $customer Optional customer code or ID to query for a single customer
+     *
      * @return array<string, array{count: int, due: float}> keyed by customer (firma) code
      */
-    public function getInvoicesStatus(): array
+    public function getInvoicesStatus(?string $customer = null): array
     {
         $invoicer = new \AbraFlexi\FakturaVydana();
+        $conditions = [
+            "(stavUhrK is null OR stavUhrK eq 'stavUhr.castUhr')",
+            'storno eq false',
+            "datSplat lt '".date('Y-m-d')."'",
+            "(typDokl eq 'code:FAKTURA' OR typDokl eq 'code:ZALOHA')",
+            'limit' => 0,
+        ];
+
+        if (!empty($customer)) {
+            $conditions['firma'] = is_numeric($customer) ? (int) $customer : \AbraFlexi\Functions::code($customer);
+        }
+
         $unpaid = $invoicer->getColumnsFromAbraFlexi(
             ['firma', 'kod', 'zbyvaUhradit', 'datSplat'],
-            [
-                "(stavUhrK is null OR stavUhrK eq 'stavUhr.castUhr')",
-                'storno eq false',
-                "datSplat lt '".date('Y-m-d')."'",
-                "(typDokl eq 'code:FAKTURA' OR typDokl eq 'code:ZALOHA')",
-                'limit' => 0,
-            ],
+            $conditions,
         );
 
         $debtors = [];
