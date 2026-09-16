@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 \define('EASE_APPNAME', 'MatchReceivedPayment');
 
-require_once \dirname(__DIR__).'/vendor/autoload.php';
+require_once is_readable('/usr/share/php/isp-tools/autoload.php') ? '/usr/share/php/isp-tools/autoload.php' : \dirname(__DIR__).'/vendor/autoload.php';
 
 use Ease\Shared;
 

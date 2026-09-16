@@ -1,3 +1,18 @@
+isp-tools (1.1.3) stable; urgency=medium
+
+  * Fix all six CLI entry points (BlockNet, UnblockNet, MatchReceivedPayment,
+    MarkDefaulters, PotvrzeniPrijetiUhrady, PotvrzeniPrijetiBankovniPlatby)
+    fatal-erroring on every invocation of the packaged .deb: each required
+    a non-existent /usr/share/vendor/autoload.php because the debian/rules
+    sed meant to rewrite that path to the real Debian autoloader location
+    (/usr/share/php/isp-tools/autoload.php) never matched the source text
+    (backslash-escaping mismatch) and its failure was silently swallowed by
+    `|| true`. The scripts now probe for the Debian autoload path directly
+    and fall back to the dev-checkout relative path, so no build-time
+    rewrite is needed; the dead sed step has been removed from debian/rules
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 16 Sep 2026 00:00:00 +0200
+
 isp-tools (1.1.2) stable; urgency=medium
 
   * Fix multiflexi-isp-tools postinst failing (half-configured) because

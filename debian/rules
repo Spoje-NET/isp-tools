@@ -10,9 +10,6 @@ override_dh_install:
 	mkdir -p debian/tmp
 	jq '.version = "'`dpkg-parsechangelog | sed -n 's/^Version: //p' | sed 's/~.*//'`'"' composer.json | sponge debian/tmp/composer.json
 	dh_install
-	sed -i "s|require_once \dirname(__DIR__).'\/vendor\/autoload.php';|require_once '/usr/share/php/isp-tools/autoload.php';|" \
-	    debian/isp-tools/usr/share/isp-tools/*.php || true
-	sed -i -e 's/\.\.\/.env//g' debian/isp-tools/usr/share/isp-tools/*.php || true
 	install -D -m 0644 debian/autoload.php debian/isp-tools/usr/share/php/isp-tools/autoload.php
 	sed -i "s|'unknown'|'$(PKG_SOURCE)'|" \
 		debian/isp-tools/usr/share/php/isp-tools/autoload.php
