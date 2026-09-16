@@ -8,8 +8,8 @@
     "cs": "Potvrzení přijetí bankovní platby"
   },
   "description": {
-    "en": "Notifies the customer that their bank payment was received but awaits manual matching by accounting. Triggered when a payment could not be auto-matched (payment.unmatched). Unknown payer is reported as a warning, not an error.",
-    "cs": "Oznámí zákazníkovi, že jeho bankovní platba byla přijata, ale čeká na ruční spárování účetní. Spouští se, když platbu nelze spárovat automaticky (payment.unmatched). Neznámý plátce je hlášen jako varování, nikoli chyba."
+    "en": "Notifies the customer that their bank payment was received but awaits manual matching by accounting. Triggered when a payment is unmatched (payment.unmatched).",
+    "cs": "Oznámí zákazníkovi, že jeho bankovní platba byla přijata, ale čeká na ruční spárování účetní. Spouští se při nespárované platbě (payment.unmatched)."
   },
   "tags": [
     "AbraFlexi",

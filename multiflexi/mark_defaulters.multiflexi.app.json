@@ -7,8 +7,8 @@
     "cs": "Označit neplatiče"
   },
   "description": {
-    "en": "Marks customers with 3rd reminder (UPOMINKA3) and an active internet service contract for disconnection by adding the ODPOJENO label. Intended to be triggered by the multiflexi-event-processor after the invoice.reminder.sent event (score 3).",
-    "cs": "Označí zákazníky s třetí upomínkou (UPOMINKA3) a platnou smlouvou na internetové připojení ke odpojení přidáním štítku ODPOJENO. Určeno ke spuštění přes multiflexi-event-processor po události invoice.reminder.sent (úroveň 3)."
+    "en": "Marks customers with 3rd reminder (UPOMINKA3) and active internet service for disconnection by adding the ODPOJENO label. Triggered after invoice.reminder.sent event.",
+    "cs": "Označí zákazníky s 3. upomínkou (UPOMINKA3) a aktivním internetem k odpojení přidáním štítku ODPOJENO. Spouští se po události invoice.reminder.sent."
   },
   "tags": [
     "AbraFlexi",

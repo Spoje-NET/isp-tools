@@ -8,8 +8,8 @@
     "cs": "Spárovat přijatou platbu"
   },
   "description": {
-    "en": "Matches a received bank/cash payment to an unpaid issued invoice by variable symbol. Exit 0 = matched and linked; exit 2 = received but cannot be auto-matched (unknown variable symbol, ambiguity or overpayment) — emits payment.unmatched. Intended to be triggered by multiflexi-event-processor on new banka/pokladna records.",
-    "cs": "Spáruje přijatou bankovní/pokladní platbu s neuhrazenou vydanou fakturou podle variabilního symbolu. Exit 0 = spárováno; exit 2 = přijato, ale nelze spárovat automaticky (neznámý variabilní symbol, nejednoznačnost nebo přeplatek) — vydává událost payment.unmatched. Určeno ke spuštění přes multiflexi-event-processor při nové platbě v bance/pokladně."
+    "en": "Matches received bank or cash payments to unpaid issued invoices by variable symbol. Unmatched payments emit payment.unmatched for event processing.",
+    "cs": "Spáruje přijaté bankovní a pokladní platby s neuhrazenými vydanými fakturami podle variabilního symbolu. Nespárované platby vydají událost payment.unmatched."
   },
   "tags": [
     "AbraFlexi",
