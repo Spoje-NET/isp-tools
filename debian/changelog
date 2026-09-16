@@ -1,3 +1,17 @@
+isp-tools (1.1.2) stable; urgency=medium
+
+  * Fix multiflexi-isp-tools postinst failing (half-configured) because
+    match_received_payment/mark_defaulters/potvrzeni_prijeti_bankovni_platby
+    app descriptions exceeded the MultiFlexi apps.description VARCHAR(255)
+    column, aborting the import loop before blocknet/unblocknet got
+    registered
+  * Add -c/--customer (CUSTOMER/ABRAFLEXI_CUSTOMER env fallback) to
+    BlockNet and UnblockNet, with matching optional customer filter in
+    DeBlocker::getBlockedCustomers()/getInvoicesStatus(), so MultiFlexi/
+    Node-RED event orchestration can target a single customer
+
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 16 Sep 2026 00:00:00 +0200
+
 isp-tools (1.1.1) stable; urgency=medium
 
   * Rename Pipeline B executables to avoid file conflicts with the
