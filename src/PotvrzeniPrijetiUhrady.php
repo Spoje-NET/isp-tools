@@ -76,7 +76,8 @@ if ($docId === '') {
     $paymentState = (string) $invoice->getDataValue('stavUhrK');
 
     if ($paymentState === '') {
-        // The invoice.matched wiring fires on any faktura-vydana update;
+        // Confirmation may be triggered by any faktura-vydana update
+        // (webhook) or by payment.received from abraflexi-matcher;
         // never confirm a payment that did not happen.
         $report['status'] = 'warning';
         $report['reason'] = 'not_paid';

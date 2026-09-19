@@ -25,7 +25,7 @@
   "events": {
     "consumes": {
       "payment.unmatched": {
-        "description": "Payment received but not auto-matched (DOCID = bank record code)"
+        "description": "Payment received but not auto-matched by abraflexi-match-received-payment (DOCID = bank record code)"
       }
     }
   },

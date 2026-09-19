@@ -8,8 +8,8 @@
     "cs": "Potvrzení přijetí úhrady"
   },
   "description": {
-    "en": "Sends the customer a payment-received confirmation email with the tax document (invoice PDF) attached. Triggered after a payment was matched to an issued invoice (invoice.matched).",
-    "cs": "Odešle zákazníkovi e-mailem potvrzení o přijetí úhrady s přiloženým daňovým dokladem (PDF faktury). Spouští se po spárování platby s vydanou fakturou (invoice.matched)."
+    "en": "Sends the customer a payment-received confirmation email with the tax document (invoice PDF) attached. Triggered after abraflexi-match-received-payment emits payment.received.",
+    "cs": "Odešle zákazníkovi e-mailem potvrzení o přijetí úhrady s přiloženým daňovým dokladem (PDF faktury). Spouští se po události payment.received z abraflexi-match-received-payment."
   },
   "tags": [
     "AbraFlexi",
@@ -24,8 +24,8 @@
   "executable": "isp-potvrzeni-prijeti-uhrady",
   "events": {
     "consumes": {
-      "invoice.matched": {
-        "description": "Payment was matched to an issued invoice (DOCID = invoice code)"
+      "payment.received": {
+        "description": "Payment was matched to an issued invoice by abraflexi-match-received-payment (DOCID = invoice code)"
       }
     }
   },

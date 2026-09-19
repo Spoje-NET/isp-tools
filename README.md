@@ -38,24 +38,24 @@ AbraFlexi: new record in banka or pokladna evidence
         │ webhook via abraflexi-webhook-acceptor → changes_cache
         ▼
 multiflexi-event-processor
-        │ rule: banka/pokladna create → match-received-payment runtemplate
+        │ rule: banka/pokladna create → abraflexi-match-received-payment runtemplate
         │       env_mapping: {"DOCUMENTID": "recordid"}
         ▼
-isp-match-received-payment
-  exit 0: payment matched to invoice
+abraflexi-match-received-payment  (from abraflexi-matcher / multiflexi-abraflexi-matcher)
+  exit 0: payment matched to invoice  (emits payment.received)
         │
         │ AbraFlexi: faktura-vydana updated (linked to payment)
         │ webhook: faktura-vydana, update
         ▼
   multiflexi-event-processor
-        │ rule: faktura-vydana update → potvrzeni-prijeti-uhrady runtemplate
+        │ rule: payment.received / faktura-vydana update → potvrzeni-prijeti-uhrady runtemplate
         │       env_mapping: {"DOCID": "recordid"}
         ▼
   isp-potvrzeni-prijeti-uhrady
     - sends tax document confirmation to customer
 
   exit 2: payment found but not matched (unknown varsym / under/overpayment)
-        │
+        │  emits payment.unmatched
         │ rule: payment.unmatched → potvrzeni-prijeti-bankovni-platby runtemplate
         │       env_mapping: {"DOCID": "recordid"}
         ▼
@@ -73,7 +73,12 @@ isp-match-received-payment
 
 ## MultiFlexi Applications
 
-This project provides six MultiFlexi applications:
+This project provides five MultiFlexi applications. Pipeline B payment
+matching is **not** shipped here — install
+[`abraflexi-matcher`](https://github.com/VitexSoftware/abraflexi-matcher)
+(`multiflexi-abraflexi-matcher`) and use its **AbraFlexi Payment Matcher**
+app (`abraflexi-match-received-payment`, uuid
+`23bf774d-de12-44b7-b4ef-454dd11ed8fd`).
 
 ### MarkDefaulters (`abraflexi-mark-defaulters`)
 
@@ -102,19 +107,19 @@ Restores internet access for disconnected customers who no longer owe:
    original speed recorded at block time; `DEFAULT_SPEED` is the fallback).
 4. After a successful unblock the `ODPOJENO` label is removed from the customer.
 
-### MatchReceivedPayment (`isp-match-received-payment`)
+### MatchReceivedPayment (`abraflexi-match-received-payment`)
 
-Matches a received bank/cash payment to an unpaid issued invoice by variable
-symbol and links it via AbraFlexi payment pairing (`sparovani`).
+Provided by **abraflexi-matcher**, not this package. Matches a received
+bank/cash payment to an unpaid issued invoice and links it via AbraFlexi
+payment pairing (`sparovani`).
 
-- Env: `DOCUMENTID` (record code or numeric id, required), `PAYMENT_EVIDENCE`
-  (`banka|pokladna|auto`, default `auto`), `MATCH_OVERPAY_MODE`
-  (`settle|manual`, default `settle`), `LABEL_OVERPAY`, `LABEL_INVOICE_MISSING`,
-  `LABEL_UNIDENTIFIED`.
-- Exit codes: `0` = matched and linked, `2` = received but cannot be
-  auto-matched (unknown variable symbol, ambiguity, or overpayment in `manual`
-  mode) — emits `payment.unmatched`, `1` = error.
-- Underpayment is linked as a partial payment (`castecnaUhrada`).
+- Env: `DOCUMENTID` (record code or numeric id, required),
+  `ABRAFLEXI_PARTIAL_MATCH` (settle underpayments automatically).
+- Exit codes: `0` = matched and linked (emits `payment.received`),
+  `2` = received but cannot be auto-matched (emits `payment.unmatched`),
+  `1` = error (payment not found).
+- See the [abraflexi-matcher README](https://github.com/VitexSoftware/abraflexi-matcher)
+  for overpayment/underpayment behaviour and other matching tools.
 
 ### PotvrzeniPrijetiUhrady (`isp-potvrzeni-prijeti-uhrady`)
 
@@ -173,13 +178,13 @@ cp .env.example .env
 - `LABEL_VIP` - VIP customer label (default: `VIP`)
 - `LABEL_THIRD_REMINDER` - Label set by abraflexi-reminder after the 3rd reminder (default: `UPOMINKA3`)
 
-#### Payment Matching (Pipeline B)
+#### Payment matching (Pipeline B)
 
-- `MATCH_OVERPAY_MODE` - Overpayment handling: `settle` or `manual` (default: `settle`)
-- `PAYMENT_EVIDENCE` - Evidence to load payments from: `banka`, `pokladna` or `auto` (default: `auto`)
-- `LABEL_OVERPAY` - Label for overpaid documents (default: `PREPLATEK`)
-- `LABEL_INVOICE_MISSING` - Label for payments without a matching invoice (default: `CHYBIFAKTURA`)
-- `LABEL_UNIDENTIFIED` - Label for unidentified payments (default: `NEIDENTIFIKOVANO`)
+Matching itself is configured on the **abraflexi-matcher** runtemplate
+(`abraflexi-match-received-payment`). The confirmation scripts in this
+package only need:
+
+- `PAYMENT_EVIDENCE` - Evidence to load unmatched payments from: `banka`, `pokladna` or `auto` (default `auto`)
 - `EASE_FROM` - Sender address for confirmation emails
 - `MUTE` - `true` = dry run, confirmation emails are not actually sent
 
@@ -235,14 +240,18 @@ The MultiFlexi application definitions are located in the `multiflexi/` director
 - `mark_defaulters.multiflexi.app.json` - MarkDefaulters application definition
 - `blocknet.multiflexi.app.json` - BlockNet application definition
 - `unblocknet.multiflexi.app.json` - UnblockNet application definition
-- `match_received_payment.multiflexi.app.json` - MatchReceivedPayment application definition
 - `potvrzeni_prijeti_uhrady.multiflexi.app.json` - PotvrzeniPrijetiUhrady application definition
 - `potvrzeni_prijeti_bankovni_platby.multiflexi.app.json` - PotvrzeniPrijetiBankovniPlatby application definition
 
+Payment matching uses `match_received_payment.multiflexi.app.json` from
+the `multiflexi-abraflexi-matcher` package (executable
+`abraflexi-match-received-payment`).
+
 ### Setting up event rules
 
-After registering all apps in MultiFlexi and creating their runtemplates,
-configure the event processor rules via `multiflexi-cli`:
+After registering the ISP Tools apps **and** the AbraFlexi Payment Matcher
+app (`multiflexi-abraflexi-matcher`) in MultiFlexi and creating their
+runtemplates, configure the event processor rules via `multiflexi-cli`:
 
 ```bash
 # ── Pipeline A: Reminder → Disconnection ──────────────────────────────────
@@ -275,8 +284,10 @@ multiflexi-cli eventrule create \
   --enabled 1
 
 # ── Pipeline B: Bank Payment → Matching → Confirmation ────────────────────
+# MATCHER_RUNTEMPLATE_ID is a runtemplate of abraflexi-match-received-payment
+# (package multiflexi-abraflexi-matcher), not an ISP Tools app.
 
-# Rule 4: new bank record → run payment matcher
+# Rule 4: new bank record → run abraflexi-match-received-payment
 multiflexi-cli eventrule create \
   --event_source_id 1 \
   --evidence "banka" \

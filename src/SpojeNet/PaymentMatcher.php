@@ -16,33 +16,15 @@ declare(strict_types=1);
 namespace SpojeNet;
 
 /**
- * Matches a received payment (bank or cash record) to an unpaid issued
- * invoice by variable symbol.
+ * Loads a received payment (bank or cash record) from AbraFlexi.
+ *
+ * Invoice pairing itself is handled by abraflexi-matcher
+ * (`abraflexi-match-received-payment`).
  *
  * @author Vitex <info@vitexsoftware.cz>
  */
-class PaymentMatcher extends \Ease\Sand
+class PaymentMatcher
 {
-    /**
-     * Payment was matched and linked to an invoice.
-     */
-    public const EXIT_MATCHED = 0;
-
-    /**
-     * Processing error (document not found, settle failure).
-     */
-    public const EXIT_ERROR = 1;
-
-    /**
-     * Payment received but cannot be auto-matched.
-     */
-    public const EXIT_UNMATCHED = 2;
-
-    public function __construct(private \AbraFlexi\Bricks\ParovacFaktur $parovac)
-    {
-        $this->setObjectName('PaymentMatcher');
-    }
-
     /**
      * Load a payment record from AbraFlexi by numeric id or record code.
      *
@@ -76,79 +58,5 @@ class PaymentMatcher extends \Ease\Sand
         }
 
         return null;
-    }
-
-    /**
-     * Try to match the payment to exactly one unpaid issued invoice by varSym.
-     *
-     * @param \AbraFlexi\RO $payment     loaded banka/pokladna record
-     * @param string        $overpayMode settle (link and keep overpayment) | manual (leave for accounting)
-     *
-     * @return array{exitcode: int, reason: string, invoice: ?string, varSym: ?string}
-     */
-    public function match(\AbraFlexi\RO $payment, string $overpayMode = 'settle'): array
-    {
-        $result = ['exitcode' => self::EXIT_UNMATCHED, 'reason' => '', 'invoice' => null, 'varSym' => null];
-
-        $varSym = trim((string) $payment->getDataValue('varSym'));
-        $result['varSym'] = $varSym;
-
-        if ($varSym === '') {
-            $result['reason'] = 'no_varsym';
-            $this->addStatusMessage(sprintf(_('Payment %s carries no variable symbol'), $payment->getRecordIdent()), 'warning');
-
-            return $result;
-        }
-
-        $invoices = (array) $this->parovac->findInvoice(['varSym' => $varSym]);
-
-        if ($invoices === []) {
-            $result['reason'] = 'unknown_varsym';
-            $this->addStatusMessage(sprintf(_('No unpaid invoice with variable symbol %s'), $varSym), 'warning');
-
-            return $result;
-        }
-
-        if (\count($invoices) > 1) {
-            $result['reason'] = 'ambiguous';
-            $this->addStatusMessage(sprintf(_('%d unpaid invoices share variable symbol %s'), \count($invoices), $varSym), 'warning');
-
-            return $result;
-        }
-
-        $invoiceData = current($invoices);
-        $result['invoice'] = \AbraFlexi\Functions::uncode((string) ($invoiceData['kod'] ?? ''));
-
-        $received = (float) $payment->getDataValue('sumCelkem');
-        $toPay = (float) ($invoiceData['zbyvaUhradit'] ?? 0);
-
-        if ($received > $toPay && $overpayMode === 'manual') {
-            $result['reason'] = 'overpayment';
-            $this->addStatusMessage(
-                sprintf(_('Overpayment of invoice %s (%s received, %s expected) left for manual matching'), $result['invoice'], $received, $toPay),
-                'warning',
-            );
-
-            return $result;
-        }
-
-        $invoice = new \AbraFlexi\FakturaVydana($invoiceData);
-
-        if ($this->parovac->settleInvoice($invoice, $payment)) {
-            $result['exitcode'] = self::EXIT_MATCHED;
-
-            if ($received < $toPay) {
-                $result['reason'] = 'matched_partial';
-            } elseif ($received > $toPay) {
-                $result['reason'] = 'matched_overpayment';
-            } else {
-                $result['reason'] = 'matched';
-            }
-        } else {
-            $result['exitcode'] = self::EXIT_ERROR;
-            $result['reason'] = 'settle_failed';
-        }
-
-        return $result;
     }
 }
