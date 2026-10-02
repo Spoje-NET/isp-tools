@@ -284,45 +284,55 @@ webhook acceptor: `recordid` (AbraFlexi record id), `evidence`, `operation`,
 and the `code:` prefix of `externalids` cannot be stripped, so the customer code
 cannot be passed to the runtemplate from an `adresar` change.
 
-Rules in use on the test deployment (vyvojar.spoje.net):
+Rules in use on the test deployment (vyvojar.spoje.net), highest priority first:
 
-| # | Trigger | Runs | env_mapping |
-|---|---------|------|-------------|
-| 3 | `adresar` **update** (webhook) | BlockNet | `{"CUSTOMER":"kod"}` (does not resolve → sweep, see below) |
-| 4 | `banka` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"id"}` (see note) |
-| 5 | `pokladna` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"id"}` (see note) |
-| 1 | `faktura-vydana` **settled** (webhook) | Clear Reminder Labels | `{"ABRAFLEXI_CUSTOMER":"firma"}` |
-| 6 | runtemplate *Clear Reminder Labels* finished | UnblockNet | `{}` |
+| # | Trigger | Runs | env_mapping | Status |
+|---|---------|------|-------------|--------|
+| 7 | `adresar` **update** (webhook) | Mark Defaulters | `{}` | works; sweep over all `UPOMINKA3` customers |
+| 3 | `adresar` **update** (webhook) | BlockNet | `{"CUSTOMER":"kod"}` | works, but `kod` does not resolve → sweep (see below) |
+| 6 | `adresar` **update** (webhook) | UnblockNet | `{}` | works; sweep over all `ODPOJENO` customers |
+| 4 | `banka` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"recordid"}` | works |
+| 5 | `pokladna` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"recordid"}` | same as 4 |
+| 1 | `faktura-vydana` **settled** (webhook) | Clear Reminder Labels | `{"ABRAFLEXI_CUSTOMER":"firma"}` | **fails**: `firma` arrives as `code:KOD` and the app answers "Customer code:KOD not found" |
 
 ```bash
-# Rule 3: any adresar change → run BlockNet (processes every ODPOJENO customer)
-multiflexi-cli event-rule:create --event_source_id 1 --evidence adresar \
-  --operation update --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID>
+# Rules 3/6/7: any adresar change → mark defaulters, block, unblock (in this order)
+multiflexi-cli event-rule:create --event_source_id 1 --evidence adresar --operation update \
+  --runtemplate_id <MARK_DEFAULTERS_RUNTEMPLATE_ID> --priority 20
+multiflexi-cli event-rule:create --event_source_id 1 --evidence adresar --operation update \
+  --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID> --priority 10
+multiflexi-cli event-rule:create --event_source_id 1 --evidence adresar --operation update \
+  --runtemplate_id <UNBLOCKNET_RUNTEMPLATE_ID> --priority 0
 
 # Rules 4/5: new bank / cash record → match the payment
-multiflexi-cli event-rule:create --event_source_id 1 --evidence banka \
-  --operation create --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
-  --env_mapping '{"DOCUMENTID":"id"}'
-multiflexi-cli event-rule:create --event_source_id 1 --evidence pokladna \
-  --operation create --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
-  --env_mapping '{"DOCUMENTID":"id"}'
+# (recordid = AbraFlexi record id; `id` would be the cache row id and match a wrong payment!)
+multiflexi-cli event-rule:create --event_source_id 1 --evidence banka --operation create \
+  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> --env_mapping '{"DOCUMENTID":"recordid"}'
+multiflexi-cli event-rule:create --event_source_id 1 --evidence pokladna --operation create \
+  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> --env_mapping '{"DOCUMENTID":"recordid"}'
 ```
 
-Rules that fire when another *runtemplate* finishes (rule 6, and the
-reminder → mark-defaulters rule) have `runtemplate_source_id` instead of an
-event source; `event-rule:create` cannot set that yet, so they are created in
-the MultiFlexi web UI.
+**Rules that fire when another runtemplate finishes** (`runtemplate_source_id`)
+only work if the finished job *produces* data (`produces` in its application
+definition); otherwise the chaining engine skips it. Reminder, Clear Reminder Labels
+and Mark Defaulters produce nothing, so such rules never fire — use the webhook
+rules above instead (the Reminder sets `UPOMINKA3`, which AbraFlexi reports as an
+`adresar` update).
 
-> **Both blocking and unblocking are sweeps.** Because `CUSTOMER` is not passed
-> (rule 3) or not mapped at all (rule 6), every `adresar` change runs BlockNet
-> over **all** customers labelled `ODPOJENO`, and rule 6 runs UnblockNet over all
-> of them: customers without overdue invoices are unblocked and lose the label.
-> Both are idempotent for customers that are already in the target state, but
-> beware of this on test AbraFlexi instances that contain many `ODPOJENO`
-> customers (the vyvojar DEV company has 25). Verified: an `adresar` change of
-> one customer made BlockNet process all 26 labelled customers.
+> **Blocking, unblocking and marking are sweeps.** `CUSTOMER` is not passed (rule 3
+> maps a column that does not exist), so every `adresar` change runs the three tools over
+> **all** relevant customers. They are idempotent, and UnblockNet keeps customers
+> that still have overdue invoices blocked, but a customer labelled `ODPOJENO`
+> *without* overdue invoices is unblocked and loses the label right away. Beware of
+> this on test AbraFlexi instances with many `ODPOJENO` customers (vyvojar DEV had
+> 25; one `adresar` change cleared them).
 
-> **Rule 7** (`payment.unmatched` → bank payment notification) is not available:
+> **Rule 1** needs a fix in `abraflexi-reminder` (accept `code:` prefixed customers)
+> or in the event processor (strip the prefix); until then Clear Reminder Labels
+> has to be started manually with `ABRAFLEXI_CUSTOMER=<kod>`.
+
+> **`payment.unmatched`** (matcher exit 2 → bank payment notification) is not
+> available: the event processor does not react to job exit codes yet.
 > the event processor does not react to job exit codes yet.
 
 #### INET_CONTRACT_TYPE
@@ -446,9 +456,15 @@ Verified so far:
 | Mark Defaulters with no `UPOMINKA3` customer | exit 0, "No customers with UPOMINKA3 label found." |
 | Webhook chain (AbraFlexi → acceptor → eventor → BlockNet) | label change blocks the customer within ~1 minute |
 
-Not yet verified: label `NEODPOJOVAT` (missing in DEV AbraFlexi), the reminder →
-Mark Defaulters rule (not defined), payment → matcher (rules 4/5) and Clear Reminder
-Labels → UnblockNet (rule 6) end to end.
+| Customer labelled `NEODPOJOVAT` | skipped by BlockNet (label had to be created in DEV AbraFlexi first) |
+| Mark Defaulters (`UPOMINKA3` + active `INTERNET` contract) | customer gets `ODPOJENO`, webhook → BlockNet commits `speed=0` (needed the `stavSml`/`typSml` fix) |
+| Bank payment with matching VS → rule 4 → matcher | invoice settled (exit 0) |
+| `adresar` change → UnblockNet (rule 6) | customers without debt unblocked, labels removed |
+
+Not verified end to end: the complete cycle on one customer without manual steps
+(Clear Reminder Labels has to be started by hand, see rule 1), and the confirmation
+mails (Payment Received Confirmation fails with `MAIL_FROM is not set` on the test
+runtemplate).
 
 ## Packaging assets
 
