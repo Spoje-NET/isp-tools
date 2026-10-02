@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Mark Defaulters</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0a93a"/>
+      <stop offset="1" stop-color="#c06f12"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+
+  <g fill="#ffffff">
+    <circle cx="230" cy="180" r="56"/>
+    <path d="M110 400 C110 320 160 276 230 276 C300 276 350 320 350 400 Z"/>
+  </g>
+  <path d="M370 150 L370 330" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+  <path d="M380 156 L452 180 L380 214 Z" fill="#ffffff" stroke="#ffffff" stroke-width="12" stroke-linejoin="round"/>
+</svg>

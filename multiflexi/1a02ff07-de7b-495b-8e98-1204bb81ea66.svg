@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Bank Payment Received Notification</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a90d9"/>
+      <stop offset="1" stop-color="#255f9e"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+
+  <g fill="#ffffff">
+    <path d="M256 92 L116 168 V196 H396 V168 Z"/>
+    <rect x="140" y="212" width="44" height="130"/><rect x="234" y="212" width="44" height="130"/><rect x="328" y="212" width="44" height="130"/>
+    <rect x="110" y="358" width="292" height="36" rx="6"/>
+  </g>
+  <rect x="300" y="300" width="150" height="108" rx="16" fill="#f0a93a" stroke="#ffffff" stroke-width="14"/>
+  <path d="M310 316 L375 366 L440 316" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

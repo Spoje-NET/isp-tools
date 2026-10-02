@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 namespace SpojeNet\tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use SpojeNet\DeBlocker;
@@ -32,6 +33,34 @@ class DeBlockerTest extends TestCase
     {
         $this->mockAdapter = $this->createMock(NetworkBackendInterface::class);
         $this->deblocker = new DeBlocker($this->mockAdapter);
+    }
+
+    #[DataProvider('contractTypeProvider')]
+    public function testActiveContractConditionsNormalizesContractType(string $input, ?string $expectedTypeCondition): void
+    {
+        $conditions = DeBlocker::activeContractConditions($input);
+
+        $this->assertSame('stavSml eq "code:AKTIVNI"', $conditions[0]);
+        $this->assertSame(0, $conditions['limit']);
+
+        if ($expectedTypeCondition === null) {
+            $this->assertCount(2, $conditions);
+        } else {
+            $this->assertSame($expectedTypeCondition, $conditions[1]);
+        }
+    }
+
+    /**
+     * @return array<string, array{string, ?string}>
+     */
+    public static function contractTypeProvider(): array
+    {
+        return [
+            'empty matches any type' => ['', null],
+            'plain code' => ['INTERNET', 'typSml eq "code:INTERNET"'],
+            'code prefix' => ['code:INTERNET', 'typSml eq "code:INTERNET"'],
+            'legacy spelling' => ['typSmlouvy.INTERNET', 'typSml eq "code:INTERNET"'],
+        ];
     }
 
     public function testBlockCustomersBlocksEachResolvedIp(): void

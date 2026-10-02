@@ -15,7 +15,7 @@ multiflexi-event-processor
         │ rule: invoice.reminder.sent → mark-defaulters runtemplate
         ▼
 abraflexi-mark-defaulters
-  - finds customers with UPOMINKA3 + active internet contract (typSmlouvy.INTERNET)
+  - finds customers with UPOMINKA3 + active internet contract (typSml `INTERNET`)
   - sets ODPOJENO label in AbraFlexi
         │
         │ AbraFlexi webhook: adresar updated
@@ -63,11 +63,10 @@ abraflexi-match-received-payment  (from abraflexi-matcher / multiflexi-abraflexi
     - notifies customer their payment was received but awaits manual matching
 ```
 
-> **Note on Pipeline B stage 2:** rules 4–6 below work today — the
-> `multiflexi-event-processor` reacts to AbraFlexi webhook changes and the
-> matched invoice update (rule 6) is itself a `faktura-vydana` webhook change.
-> Rule 7 (`payment.unmatched`) requires the event processor to react to job
-> exit codes / `job.completed`, which it does not support yet; until then run
+> **Note on Pipeline B stage 2:** the `multiflexi-event-processor` reacts to
+> AbraFlexi webhook changes (bank/cash record created, invoice settled), see
+> [Setting up event rules](#setting-up-event-rules). Reacting to the matcher's
+> exit code (`payment.unmatched`, exit 2) is not supported yet; until then run
 > `isp-potvrzeni-prijeti-bankovni-platby` manually or from a wrapper
 > that inspects the matcher's exit code.
 
@@ -88,7 +87,7 @@ adding the `ODPOJENO` label. Triggered by the `invoice.reminder.sent` event.
 
 Customers with only VoIP, IpTV, Hosting or Housing contracts are **not** marked
 for internet disconnection even if their invoices are overdue. Set `INET_CONTRACT_TYPE`
-to the AbraFlexi `typSmlouvyK` code of internet contracts to enable precise filtering.
+to the AbraFlexi contract type code (`typSml`, e.g. `INTERNET`) to enable precise filtering.
 
 ### BlockNet (`blocknet`)
 
@@ -247,92 +246,91 @@ Payment matching uses `match_received_payment.multiflexi.app.json` from
 the `multiflexi-abraflexi-matcher` package (executable
 `abraflexi-match-received-payment`).
 
+### Event processor prerequisites
+
+The event-driven pipelines need the whole delivery chain to work:
+
+```
+AbraFlexi ──webhook──▶ abraflexi-webhook-acceptor ──▶ changes_cache (SQL)
+                                                          │ polled (30 s)
+                                                          ▼
+                              multiflexi-eventor (event source "AbraFlexiWebHookAcceptor")
+                                                          │ event rules
+                                                          ▼
+                                                   MultiFlexi runtemplates
+```
+
+1. **Webhook acceptor** (`abraflexi-webhook-acceptor`) configured in
+   `/etc/abraflexi-webhook-acceptor/.env` and reachable from the AbraFlexi
+   server.
+2. **A webhook registered in AbraFlexi** for the company — without it AbraFlexi
+   sends nothing and no rule ever fires (check with
+   `GET /c/<company>/hooks.json`; an empty `hooks` list means events are lost).
+   Register it with the acceptor's `installer.php` or `POST /c/<company>/hooks`, URL
+   `https://<host>/abraflexi-webhook-acceptor/webhook.php?company=<company>`.
+3. **Event source** in MultiFlexi (`multiflexi-cli event-source:list`) pointing
+   at the acceptor database; `multiflexi-eventor.service` running.
+
 ### Setting up event rules
 
 After registering the ISP Tools apps **and** the AbraFlexi Payment Matcher
 app (`multiflexi-abraflexi-matcher`) in MultiFlexi and creating their
-runtemplates, configure the event processor rules via `multiflexi-cli`:
+runtemplates, configure the event processor rules via `multiflexi-cli`
+(`event-rule:create`, options `--event_source_id --evidence --operation
+--runtemplate_id --priority --enabled --env_mapping`). The `env_mapping` maps a
+runtemplate variable to a column of the `changes_cache` row delivered by the
+webhook acceptor: `recordid` (AbraFlexi record id), `evidence`, `operation`,
+`externalids` (e.g. `code:E2ETEST2`), `inversion`. There is **no** `kod` column
+and the `code:` prefix of `externalids` cannot be stripped, so the customer code
+cannot be passed to the runtemplate from an `adresar` change.
+
+Rules in use on the test deployment (vyvojar.spoje.net):
+
+| # | Trigger | Runs | env_mapping |
+|---|---------|------|-------------|
+| 3 | `adresar` **update** (webhook) | BlockNet | `{"CUSTOMER":"kod"}` (does not resolve → sweep, see below) |
+| 4 | `banka` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"id"}` (see note) |
+| 5 | `pokladna` **create** (webhook) | Match Received Payment | `{"DOCUMENTID":"id"}` (see note) |
+| 1 | `faktura-vydana` **settled** (webhook) | Clear Reminder Labels | `{"ABRAFLEXI_CUSTOMER":"firma"}` |
+| 6 | runtemplate *Clear Reminder Labels* finished | UnblockNet | `{}` |
 
 ```bash
-# ── Pipeline A: Reminder → Disconnection ──────────────────────────────────
+# Rule 3: any adresar change → run BlockNet (processes every ODPOJENO customer)
+multiflexi-cli event-rule:create --event_source_id 1 --evidence adresar \
+  --operation update --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID>
 
-# Rule 1: after 3rd reminder → mark customers for disconnection
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "invoice.reminder.sent" \
-  --operation "any" \
-  --runtemplate_id <MARK_DEFAULTERS_RUNTEMPLATE_ID> \
-  --priority 10 \
-  --enabled 1
-
-# Rule 2: after ODPOJENO is set (adresar webhook) → block internet
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "adresar" \
-  --operation "update" \
-  --runtemplate_id <BLOCKNET_RUNTEMPLATE_ID> \
-  --priority 5 \
-  --enabled 1
-
-# Rule 3: after UPOMINKA* labels removed (adresar webhook) → unblock internet
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "adresar" \
-  --operation "update" \
-  --runtemplate_id <UNBLOCKNET_RUNTEMPLATE_ID> \
-  --priority 5 \
-  --enabled 1
-
-# ── Pipeline B: Bank Payment → Matching → Confirmation ────────────────────
-# MATCHER_RUNTEMPLATE_ID is a runtemplate of abraflexi-match-received-payment
-# (package multiflexi-abraflexi-matcher), not an ISP Tools app.
-
-# Rule 4: new bank record → run abraflexi-match-received-payment
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "banka" \
-  --operation "create" \
-  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
-  --priority 20 \
-  --enabled 1 \
-  --env_mapping '{"DOCUMENTID":"recordid"}'
-
-# Rule 5: new cash record → run payment matcher
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "pokladna" \
-  --operation "create" \
-  --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
-  --priority 20 \
-  --enabled 1 \
-  --env_mapping '{"DOCUMENTID":"recordid"}'
-
-# Rule 6: invoice updated (= matched payment) → send tax document confirmation
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "faktura-vydana" \
-  --operation "update" \
-  --runtemplate_id <POTVRZENI_PRIJETI_UHRADY_RUNTEMPLATE_ID> \
-  --priority 10 \
-  --enabled 1 \
-  --env_mapping '{"DOCID":"recordid"}'
-
-# Rule 7: unmatched payment (exit 2 from matcher) → notify customer
-multiflexi-cli eventrule create \
-  --event_source_id 1 \
-  --evidence "payment.unmatched" \
-  --operation "any" \
-  --runtemplate_id <POTVRZENI_PRIJETI_BANKOVNI_PLATBY_RUNTEMPLATE_ID> \
-  --priority 10 \
-  --enabled 1 \
-  --env_mapping '{"DOCID":"recordid"}'
+# Rules 4/5: new bank / cash record → match the payment
+multiflexi-cli event-rule:create --event_source_id 1 --evidence banka \
+  --operation create --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
+  --env_mapping '{"DOCUMENTID":"id"}'
+multiflexi-cli event-rule:create --event_source_id 1 --evidence pokladna \
+  --operation create --runtemplate_id <MATCHER_RUNTEMPLATE_ID> \
+  --env_mapping '{"DOCUMENTID":"id"}'
 ```
+
+Rules that fire when another *runtemplate* finishes (rule 6, and the
+reminder → mark-defaulters rule) have `runtemplate_source_id` instead of an
+event source; `event-rule:create` cannot set that yet, so they are created in
+the MultiFlexi web UI.
+
+> **Both blocking and unblocking are sweeps.** Because `CUSTOMER` is not passed
+> (rule 3) or not mapped at all (rule 6), every `adresar` change runs BlockNet
+> over **all** customers labelled `ODPOJENO`, and rule 6 runs UnblockNet over all
+> of them: customers without overdue invoices are unblocked and lose the label.
+> Both are idempotent for customers that are already in the target state, but
+> beware of this on test AbraFlexi instances that contain many `ODPOJENO`
+> customers (the vyvojar DEV company has 25). Verified: an `adresar` change of
+> one customer made BlockNet process all 26 labelled customers.
+
+> **Rule 7** (`payment.unmatched` → bank payment notification) is not available:
+> the event processor does not react to job exit codes yet.
 
 #### INET_CONTRACT_TYPE
 
-Set to `typSmlouvy.INTERNET` for Spoje.net deployment to restrict disconnection
-to customers with active internet contracts only (typSmlouvy code `INTERNET`).
-Leave empty to match all contract types.
+Set to `INTERNET` for Spoje.net deployment to restrict disconnection
+to customers with an active (`stavSml` = `AKTIVNI`) contract of type `INTERNET`
+(evidence *typ-smlouvy*). `code:INTERNET` and the legacy `typSmlouvy.INTERNET`
+spelling are accepted too. Leave empty to match all contract types.
 
 #### Customer labels
 
@@ -342,6 +340,15 @@ Leave empty to match all contract types.
 | `ODPOJENO` | abraflexi-mark-defaulters | Customer marked for disconnection |
 | `NEODPOJOVAT` | Manual | Never disconnect this customer |
 | `VIP` | Manual | Skip disconnection for VIP customers |
+
+Notes:
+
+- A label must exist in the AbraFlexi *štítky* list before it can be set; setting
+  an unknown label fails with `success: false`. On the vyvojar DEV company
+  `NEODPOJOVAT` does not exist yet (`ODPOJENO`, `UPOMINKA3`, `VIP` do).
+- On update AbraFlexi **merges** the `stitky` field, it does not replace it.
+  Removing labels needs the `stitky@removeAll` directive
+  (`Adresar::unsetLabel()`); writing a shorter list leaves the old labels in place.
 
 ## NetBox Integration
 
@@ -408,6 +415,48 @@ For testing the Subversion backend, a test repository is included in `tests/svn/
 - Documentation in `tests/svn/README.md`
 
 The test repository allows testing blocking/unblocking operations without affecting production systems.
+
+### Rehearsal on a test deployment (vyvojar.spoje.net)
+
+The complete flow is rehearsed on `vyvojar.spoje.net` against the **DEV** AbraFlexi
+(`flexibee-dev.spoje.net`, company `spoje_net_s_r_o_`) and a **local** Subversion
+repository (`file:///var/lib/isp-tools-test-svn/hosts-repo/hostsbrevnov`, user
+`multiflexi-test`), never against the production hosts repository. MultiFlexi company 21
+("Testing") holds the runtemplates *Block Internet Access*, *Unblock Internet Access*,
+*Mark Defaulters - Testing* and *Match Received Payment*; the AbraFlexi connection comes
+from the shared credential *Testing / AbraFlexi Testing*. Test customers `E2ETEST1`
+(10.99.99.11) and `E2ETEST2` (10.99.99.12) have `{code:…}` lines in the test `hosts` file.
+
+Single customer from the command line (one-time `CUSTOMER` override):
+
+```bash
+multiflexi-cli run-template:schedule --id <BLOCK_RT> --schedule_time now --env CUSTOMER=E2ETEST2
+svn log -v -l 1 file:///var/lib/isp-tools-test-svn/hosts-repo/hostsbrevnov   # Auto-block-IP-…
+```
+
+Verified so far:
+
+| Case | Result |
+|------|--------|
+| Disconnect: `ODPOJENO` label → BlockNet | commit `Auto-block-IP-…`, line becomes `# speed=0 orig=N …` |
+| Reconnect: UnblockNet without debt | commit `Auto-unblock-IP-…`, original speed restored from `orig=`, label removed |
+| Customer with unpaid overdue invoice | UnblockNet keeps the block (`still_owes`), no commit |
+| Customer labelled `VIP` | skipped by BlockNet, hosts file untouched |
+| Customer with no IP in `hosts` | reported as "No IP addresses found", no commit |
+| Mark Defaulters with no `UPOMINKA3` customer | exit 0, "No customers with UPOMINKA3 label found." |
+| Webhook chain (AbraFlexi → acceptor → eventor → BlockNet) | label change blocks the customer within ~1 minute |
+
+Not yet verified: label `NEODPOJOVAT` (missing in DEV AbraFlexi), the reminder →
+Mark Defaulters rule (not defined), payment → matcher (rules 4/5) and Clear Reminder
+Labels → UnblockNet (rule 6) end to end.
+
+## Packaging assets
+
+- `isp-tools.svg` — application icon (installed to `hicolor/scalable/apps`)
+- `multiflexi/<application-uuid>.svg` — one icon per MultiFlexi application,
+  installed to the shared `/usr/share/multiflexi/images/`
+- `debian/io.github.spoje_net.isp_tools.metainfo.xml` — AppStream metadata
+  (validate with `appstreamcli validate --no-net`)
 
 ## Requirements
 

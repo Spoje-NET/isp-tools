@@ -73,28 +73,21 @@ if (empty($candidates)) {
 
 // ------------------------------------------------------------------
 // 2. Customers with active INTERNET contracts
-// INET_CONTRACT_TYPE filters smlouva by typSmlouvyK code (e.g. "INET").
+// INET_CONTRACT_TYPE filters smlouva by its type code (typSml, e.g. "INTERNET").
 // Leave empty to match ALL active contracts (less precise).
 // ------------------------------------------------------------------
-$inetContractType = Shared::cfg('INET_CONTRACT_TYPE', '');
 $smlouvaEvidence = new \AbraFlexi\Smlouva();
 
-$contractConditions = ['stavK eq "stav.platna"', 'limit' => 0];
-
-if ($inetContractType !== '') {
-    $contractConditions[] = 'typSmlouvyK eq "'.addslashes($inetContractType).'"';
-}
-
 $allContracts = $smlouvaEvidence->getColumnsFromAbraFlexi(
-    ['firma', 'kod', 'stavK', 'typSmlouvyK'],
-    $contractConditions,
+    ['firma', 'kod', 'stavSml', 'typSml'],
+    \SpojeNet\DeBlocker::activeContractConditions((string) Shared::cfg('INET_CONTRACT_TYPE', '')),
 );
 
 $customersWithContracts = [];
 
 foreach ($allContracts as $contract) {
     if (!empty($contract['firma'])) {
-        $firmCode = \is_array($contract['firma']) ? ($contract['firma']['kod'] ?? '') : (string) $contract['firma'];
+        $firmCode = \is_array($contract['firma']) ? ($contract['firma']['kod'] ?? '') : \AbraFlexi\Functions::uncode((string) $contract['firma']);
         $customersWithContracts[$firmCode] = true;
     }
 }

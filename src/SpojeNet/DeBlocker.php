@@ -37,26 +37,37 @@ class DeBlocker extends \Ease\Sand
     }
 
     /**
-     * Customers holding an active internet service contract.
+     * Filter conditions selecting active contracts (smlouva), optionally of one contract type.
      *
-     * INET_CONTRACT_TYPE filters smlouva by typSmlouvyK code
-     * (e.g. "typSmlouvy.INTERNET"). Leave empty to match ALL active contracts.
+     * The contract type accepts `INTERNET`, `code:INTERNET` and the legacy
+     * `typSmlouvy.INTERNET` spelling.
      *
-     * @return array<string, bool> customer (firma) code => true
+     * @return array<int|string, mixed> conditions for AbraFlexi\Smlouva::getColumnsFromAbraFlexi()
+     */
+    public static function activeContractConditions(string $contractType = ''): array
+    {
+        $conditions = ['stavSml eq "code:AKTIVNI"', 'limit' => 0];
+        $contractType = trim($contractType);
+
+        if ($contractType !== '') {
+            $contractType = preg_replace('/^(typSmlouvy\.|code:)/', '', $contractType);
+            $conditions[] = 'typSml eq "code:'.addslashes((string) $contractType).'"';
+        }
+
+        return $conditions;
+    }
+
+    /**
+     * Customers having an active contract of INET_CONTRACT_TYPE (any type when empty).
+     *
+     * @return array<string, bool> customer code => true
      */
     public function getInetCustomers(): array
     {
         $contract = new \AbraFlexi\Smlouva();
-        $conditions = ['stavK eq "stav.platna"', 'limit' => 0];
-        $inetContractType = (string) \Ease\Shared::cfg('INET_CONTRACT_TYPE', '');
-
-        if ($inetContractType !== '') {
-            $conditions[] = 'typSmlouvyK eq "'.addslashes($inetContractType).'"';
-        }
-
         $customersWithContracts = [];
 
-        foreach ((array) $contract->getColumnsFromAbraFlexi(['firma', 'kod', 'stavK', 'typSmlouvyK'], $conditions) as $contractData) {
+        foreach ((array) $contract->getColumnsFromAbraFlexi(['firma', 'kod', 'stavSml', 'typSml'], self::activeContractConditions((string) \Ease\Shared::cfg('INET_CONTRACT_TYPE', ''))) as $contractData) {
             if (!empty($contractData['firma'])) {
                 $firmCode = \is_array($contractData['firma']) ? ($contractData['firma']['kod'] ?? '') : \AbraFlexi\Functions::uncode((string) $contractData['firma']);
                 $customersWithContracts[$firmCode] = true;

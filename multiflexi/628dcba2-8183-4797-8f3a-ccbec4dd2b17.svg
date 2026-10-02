@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Payment Received Confirmation</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3fae6a"/>
+      <stop offset="1" stop-color="#1f7a43"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+
+  <path d="M152 96 H316 L372 152 V416 H152 Z" fill="#ffffff"/>
+  <path d="M316 96 V152 H372" fill="#d5ead9"/>
+  <g stroke="#1f7a43" stroke-width="16" stroke-linecap="round" opacity=".55">
+    <path d="M190 200 H300 M190 244 H334"/>
+  </g>
+  <circle cx="330" cy="356" r="72" fill="#1f7a43" stroke="#ffffff" stroke-width="16"/>
+  <path d="M298 358 L322 382 L364 330" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

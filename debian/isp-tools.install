@@ -3,3 +3,5 @@ debian/autoload.php             usr/share/php/isp-tools/
 src/*.php                       usr/share/isp-tools/
 src/SpojeNet/*.php              usr/share/php/isp-tools/SpojeNet/
 bin/*                           usr/bin/
+isp-tools.svg                   usr/share/icons/hicolor/scalable/apps/
+debian/io.github.spoje_net.isp_tools.metainfo.xml usr/share/metainfo/

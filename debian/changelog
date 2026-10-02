@@ -3,6 +3,13 @@ isp-tools (1.1.5) UNRELEASED; urgency=medium
   * Drop isp-match-received-payment; Pipeline B matching now uses
     abraflexi-match-received-payment from abraflexi-matcher /
     multiflexi-abraflexi-matcher instead of a duplicate ISP tool
+  * Add application icons (package icon and one SVG per MultiFlexi
+    application, installed to /usr/share/multiflexi/images/) and AppStream
+    metainfo
+  * Document the event processor prerequisites (webhook acceptor, registered
+    AbraFlexi hook), the event rules as deployed, the sweep behaviour of
+    BlockNet/UnblockNet and the rehearsal procedure; fix README.Debian
+    autoloader paths
 
  -- Vítězslav Dvořák <info@vitexsoftware.cz>  Sat, 19 Sep 2026 12:40:00 +0200
 

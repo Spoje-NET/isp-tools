@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Block Internet Access</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e05a4f"/>
+      <stop offset="1" stop-color="#a32a22"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 120 L146 310 M256 120 L366 310 M146 310 L366 310"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="256" cy="120" r="42"/><circle cx="146" cy="310" r="42"/><circle cx="366" cy="310" r="42"/>
+  </g>
+  <circle cx="352" cy="352" r="86" fill="#a32a22" stroke="#ffffff" stroke-width="18"/>
+  <path d="M292 412 L412 292" stroke="#ffffff" stroke-width="22" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>io.github.spoje_net.isp_tools</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>ISP Tools</name>
+  <summary>Block and unblock internet access based on AbraFlexi invoices</summary>
+  <summary xml:lang="cs">Blokování a odblokování přístupu k internetu podle faktur v AbraFlexi</summary>
+  <description>
+    <p>
+      ISP network management tools driven by the invoice status in AbraFlexi.
+      Customers with an overdue third reminder are marked as disconnected, their
+      addresses are blocked in the network configuration and restored again once
+      the debt is paid. Received payments are confirmed to customers by e-mail.
+      Every tool can be scheduled through MultiFlexi or triggered by its events.
+    </p>
+    <p xml:lang="cs">
+      Nástroje pro správu sítě ISP řízené stavem faktur v AbraFlexi. Zákazníci
+      s propadlou třetí upomínkou se označí jako odpojení, jejich adresy se
+      zablokují v konfiguraci sítě a po zaplacení dluhu se znovu obnoví.
+      Přijaté platby se zákazníkům potvrzují e-mailem. Každý nástroj lze
+      naplánovat v MultiFlexi nebo spouštět jeho událostmi.
+    </p>
+    <p>Included tools:</p>
+    <p xml:lang="cs">Součástí jsou tyto nástroje:</p>
+    <ul>
+      <li><em>abraflexi-mark-defaulters</em> — Marks customers with an overdue third reminder as disconnected.</li>
+      <li xml:lang="cs"><em>abraflexi-mark-defaulters</em> — označí zákazníky s propadlou třetí upomínkou jako odpojené.</li>
+      <li><em>blocknet</em> — Blocks internet access of disconnected customers.</li>
+      <li xml:lang="cs"><em>blocknet</em> — zablokuje přístup k internetu odpojeným zákazníkům.</li>
+      <li><em>unblocknet</em> — Restores internet access of customers who no longer owe.</li>
+      <li xml:lang="cs"><em>unblocknet</em> — obnoví přístup k internetu zákazníkům, kteří už nedluží.</li>
+      <li><em>isp-potvrzeni-prijeti-uhrady</em> — Sends the customer a payment confirmation with the tax document.</li>
+      <li xml:lang="cs"><em>isp-potvrzeni-prijeti-uhrady</em> — pošle zákazníkovi potvrzení o přijetí úhrady s daňovým dokladem.</li>
+      <li><em>isp-potvrzeni-prijeti-bankovni-platby</em> — Notifies the customer that a bank payment was received.</li>
+      <li xml:lang="cs"><em>isp-potvrzeni-prijeti-bankovni-platby</em> — oznámí zákazníkovi přijetí bankovní platby.</li>
+    </ul>
+  </description>
+  <categories>
+    <category>System</category>
+    <category>ConsoleOnly</category>
+  </categories>
+  <url type="homepage">https://github.com/Spoje-NET/isp-tools</url>
+  <url type="bugtracker">https://github.com/Spoje-NET/isp-tools/issues</url>
+  <developer id="net.spoje">
+    <name>Spoje.Net</name>
+  </developer>
+  <provides>
+    <binary>abraflexi-mark-defaulters</binary>
+    <binary>blocknet</binary>
+    <binary>unblocknet</binary>
+    <binary>isp-potvrzeni-prijeti-uhrady</binary>
+    <binary>isp-potvrzeni-prijeti-bankovni-platby</binary>
+  </provides>
+  <icon type="stock">isp-tools</icon>
+  <content_rating type="oars-1.1"/>
+</component>
