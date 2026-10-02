@@ -1,9 +1,12 @@
 #!groovy
 
-String[] distributions = ['debian:bookworm', 'debian:trixie', 'ubuntu:jammy', 'ubuntu:noble']
+// ubuntu:resolute re-enabled: libjs-jquery-datatables and libjs-jquery-selectize.js are now
+// in the Ubuntu resolute universe archive; php-goat1000-svggraph now builds for resolute too.
+String[] distributions = ['debian:bookworm', 'debian:trixie', 'ubuntu:jammy', 'ubuntu:noble', 'ubuntu:resolute']
 
 String vendor = 'vitexsoftware'
 String imagePrefix = 'multiflexi-'
+//String distroFamily = ''
 
 properties([
     copyArtifactPermission('*'),
@@ -11,7 +14,7 @@ properties([
         useBuildBlocker: true,
         blockLevel: 'GLOBAL',
         scanQueueFor: 'ALL',
-        blockingJobs: '♻  repo.mutiflexi.eu'
+        blockingJobs: '.*repo.mutiflexi.eu'
     )
 ])
 node() {
@@ -53,7 +56,7 @@ distributions.each { distro ->
                     buildImage.inside('--init') {
                         sh 'dch -b -v ' + buildVer  + ' "' + env.BUILD_TAG  + '"'
                         sh 'sudo apt-get update --allow-releaseinfo-change'
-                        sh 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install pkg-php-tools jq moreutils || true'
+                        sh 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install pkg-php-tools || true'
                         sh 'sudo chown -R jenkins:jenkins . ..'
                         sh 'sudo rm -rf debian/$(dpkg-parsechangelog --show-field Source)/ debian/.debhelper/ debian/tmp/'
                         sh 'debuild-pbuilder -r"sudo -E" -i -us -uc -b'
@@ -67,11 +70,11 @@ distributions.each { distro ->
 
                 stage('Test ' + distroName) {
                     buildImage.inside('--init') {
-                        def debconf_debug = 0
+                        def debconf_debug = 0 //Set to "5" or "developer" to debug debconf
                         sh 'cd $WORKSPACE/dist/debian/ ; dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz; cd $WORKSPACE'
                         sh 'echo "deb [trusted=yes] file://///$WORKSPACE/dist/debian/ ./" | sudo tee /etc/apt/sources.list.d/local.list'
                         sh 'sudo apt-get update --allow-releaseinfo-change'
-                        sh 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install multiflexi-sqlite || true'
+                        sh 'sudo DEBIAN_FRONTEND=noninteractive apt-get -y install pkg-php-tools multiflexi-sqlite || true'
                         sh 'echo "INSTALATION"'
                         artifacts.each { deb_file ->
                             if (deb_file.endsWith('.deb')) {
@@ -82,11 +85,15 @@ distributions.each { distro ->
                     }
                 }
                 stage('Archive artifacts ' + distroName ) {
+                    // Only run if previous stages (Build and Test) succeeded
                     buildImage.inside('--init') {
+                        // Archive all produced artifacts listed in debian/files
                         artifacts.each { deb_file ->
                             println "Archiving artifact: " + deb_file
                             archiveArtifacts artifacts: 'dist/debian/' + deb_file
                         }
+                        // Cleanup: remove any produced files named in debian/files
+                        // Try both the dist location and any potential original locations referenced by debian/files
                         sh '''
                             set -e
                             if [ -f debian/files ]; then
@@ -107,13 +114,13 @@ distributions.each { distro ->
 parallel branches
 
 if (!currentBuild.result || currentBuild.result == 'SUCCESS') {
-    build job: 'Spoje.Net-publish',
+    build job: 'MultiFlexi-publish',
       wait: false,
       parameters: [
         string(name: 'UPSTREAM_JOB', value: env.JOB_NAME),
         string(name: 'UPSTREAM_BUILD', value: env.BUILD_NUMBER),
-        string(name: 'REMOTE_SSH', value: 'multirepo@repo.spojenet.cz'),
-        string(name: 'REMOTE_REPO_DIR', value: '/var/lib/multirepo/public/spojenet'),
+        string(name: 'REMOTE_SSH', value: 'multirepo@repo.multiflexi.eu'),
+        string(name: 'REMOTE_REPO_DIR', value: '/var/lib/multirepo/public/multiflexi'),
         string(name: 'COMPONENT', value: 'main'),
         string(name: 'DEB_DIST', value: '')
       ]
