@@ -11,6 +11,9 @@
     "en": "Block internet access for all clients with ODPOJEN (DISCONNECTED) label",
     "cs": "Zablokuje internet všem klientům kteří mají štítek ODPOJEN"
   },
+  "requirements": [
+    "AbraFlexi"
+  ],
   "tags": [
     "AbraFlexi",
     "ISP",
