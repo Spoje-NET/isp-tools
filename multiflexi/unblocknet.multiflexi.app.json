@@ -11,6 +11,9 @@
     "en": "Unblock internet access for all clients who are not in debt",
     "cs": "Odblokuje internet všem kteří nedluží"
   },
+  "requirements": [
+    "AbraFlexi"
+  ],
   "tags": [
     "AbraFlexi",
     "ISP",

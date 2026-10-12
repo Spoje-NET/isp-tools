@@ -34,7 +34,7 @@ use Ease\Shared;
 $options = getopt('o::e::c::', ['output::', 'environment::', 'customer::']);
 Shared::init(
     ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE'],
-    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : \dirname(__DIR__).'/.env'),
+    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : (\is_readable(\dirname(__DIR__).'/.env') ? \dirname(__DIR__).'/.env' : '')),
 );
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : Shared::cfg('RESULT_FILE', 'php://stdout');
@@ -60,6 +60,7 @@ $report['metrics']['disconnected_total'] = \count($disconnected);
 
 if (empty($disconnected)) {
     $report['message'] = 'No disconnected customers found.';
+    $deblocker->addStatusMessage($report['message'], 'success');
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
     exit(0);
@@ -72,6 +73,10 @@ $eligible = [];
 foreach ($disconnected as $kod => $address) {
     if (\array_key_exists($kod, $debtors)) {
         ++$report['metrics']['still_owing'];
+        $deblocker->addStatusMessage(
+            sprintf('Customer %s still owes %s (%d unpaid invoices)', $kod, $debtors[$kod]['due'], $debtors[$kod]['count']),
+            'warning',
+        );
         $report['customers'][] = [
             'kod' => $kod,
             'action' => 'still_owes',
@@ -130,6 +135,8 @@ if ($report['exitcode'] !== 0) {
 } elseif ($m['no_ip'] > 0) {
     $report['status'] = 'warning';
 }
+
+$deblocker->addStatusMessage($report['message'], $report['exitcode'] === 0 ? ($report['status'] === 'warning' ? 'warning' : 'success') : 'error');
 
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 $deblocker->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
