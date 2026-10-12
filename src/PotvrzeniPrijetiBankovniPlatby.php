@@ -58,6 +58,7 @@ if ($docId === '') {
     $report['status'] = 'error';
     $report['reason'] = 'no_docid';
     $report['message'] = 'No DOCID provided.';
+    Shared::logger()->addToLog(EASE_APPNAME, $report['message'], 'error');
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
     exit($report['exitcode']);
@@ -70,6 +71,7 @@ if ($payment === null) {
     $report['status'] = 'error';
     $report['reason'] = 'document_not_found';
     $report['message'] = sprintf('Payment document %s not found.', $docId);
+    Shared::logger()->addToLog(EASE_APPNAME, $report['message'], 'error');
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
     exit($report['exitcode']);
@@ -101,6 +103,8 @@ if ($recipient === null) {
     $report['reason'] = 'send_failed';
     $report['message'] = sprintf('Sending notification about payment %s to %s failed.', $report['document'], $recipient);
 }
+
+$notifier->addStatusMessage($report['message'], $report['exitcode'] === 0 ? ($report['status'] === 'warning' ? 'warning' : 'success') : 'error');
 
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 $notifier->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');

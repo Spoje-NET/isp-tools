@@ -113,6 +113,8 @@ if ($report['exitcode'] !== 0) {
     $report['status'] = 'warning';
 }
 
+$deblocker->addStatusMessage($report['message'], $report['exitcode'] === 0 ? ($report['status'] === 'warning' ? 'warning' : 'success') : 'error');
+
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 $deblocker->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
 

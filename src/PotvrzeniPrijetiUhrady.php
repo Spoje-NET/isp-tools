@@ -69,6 +69,7 @@ if ($docId === '') {
     $report['reason'] = 'document_not_found';
     $report['message'] = sprintf('Invoice %s not found.', $docId);
 } else {
+    $invoice->addStatusMessage(sprintf('Processing invoice %s', $docId), 'info');
     $invoice->loadFromAbraFlexi(\AbraFlexi\Functions::code($docId));
     $confirmer = new \SpojeNet\PaidInvoiceConfirmer($invoice);
     $recipient = $confirmer->recipient();
@@ -100,6 +101,8 @@ if ($docId === '') {
         $report['message'] = sprintf('Sending confirmation for invoice %s to %s failed.', $docId, $recipient);
     }
 }
+
+$invoice->addStatusMessage($report['message'], $report['exitcode'] === 0 ? ($report['status'] === 'warning' ? 'warning' : 'success') : 'error');
 
 $written = file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 $invoice->addStatusMessage(sprintf('Report saved to %s', $destination), $written ? 'success' : 'error');
