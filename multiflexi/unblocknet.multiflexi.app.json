@@ -137,6 +137,26 @@
       "required": true,
       "category": "Other"
     },
+    "LABEL_DISCONNECTED": {
+      "type": "string",
+      "description": {
+        "en": "Label to set on customers marked for disconnection (must match isp-tools blocknet config)",
+        "cs": "Štítek nastavený zákazníkům určeným k odpojení (musí odpovídat nastavení blocknet)"
+      },
+      "defval": "ODPOJENO",
+      "required": false,
+      "category": "Other"
+    },
+    "DEFAULT_SPEED": {
+      "type": "integer",
+      "description": {
+        "en": "Fallback speed restored on unblock when the network backend has no stored original speed",
+        "cs": "Záložní rychlost obnovená při odblokování, pokud backend nemá uloženou původní rychlost"
+      },
+      "defval": 0,
+      "required": false,
+      "category": "Behavior"
+    },
     "RESULT_FILE": {
       "type": "string",
       "description": {

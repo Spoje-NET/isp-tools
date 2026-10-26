@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "$schema": "https://multiflexi.eu/schema/application.json",
   "schemaVersion": "3.4.0",
   "uuid": "8f3c4a5e-9b2d-4e1f-a6d8-7c9e0f1a2b3c",
   "version": "1.0.0",
@@ -83,6 +83,86 @@
       "defval": "https://demo.flexibee.eu:5434",
       "required": true,
       "category": "API"
+    },
+    "SVNUSER": {
+      "type": "string",
+      "description": {
+        "en": "SVN user name used to commit network configuration changes",
+        "cs": "Uživatelské jméno do SVN pro zápis změn síťové konfigurace"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNPASS": {
+      "type": "password",
+      "description": {
+        "en": "SVN password",
+        "cs": "Heslo do SVN"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNURL": {
+      "type": "url",
+      "description": {
+        "en": "SVN repository URL with network configuration",
+        "cs": "URL SVN repozitáře se síťovou konfigurací"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNBIN": {
+      "type": "file-path",
+      "description": {
+        "en": "Path to the svn client binary",
+        "cs": "Cesta ke spustitelnému souboru svn klienta"
+      },
+      "defval": "/usr/bin/svn",
+      "required": true,
+      "category": "Other"
+    },
+    "LOGFILE": {
+      "type": "file-path",
+      "description": {
+        "en": "Path to the log file",
+        "cs": "Cesta k souboru s logem"
+      },
+      "defval": "",
+      "required": true,
+      "category": "Other"
+    },
+    "LABEL_DISCONNECTED": {
+      "type": "string",
+      "description": {
+        "en": "Label to set on customers marked for disconnection (must match isp-tools blocknet config)",
+        "cs": "Štítek nastavený zákazníkům určeným k odpojení (musí odpovídat nastavení blocknet)"
+      },
+      "defval": "ODPOJENO",
+      "required": false,
+      "category": "Other"
+    },
+    "LABEL_VIP": {
+      "type": "string",
+      "description": {
+        "en": "VIP customers are skipped",
+        "cs": "VIP zákazníci jsou přeskočeni"
+      },
+      "defval": "VIP",
+      "required": false,
+      "category": "Other"
+    },
+    "LABEL_NODISCONNECT": {
+      "type": "string",
+      "description": {
+        "en": "Customers with this label are never marked for disconnection",
+        "cs": "Zákazníci s tímto štítkem nebudou nikdy označeni k odpojení"
+      },
+      "defval": "NEODPOJOVAT",
+      "required": false,
+      "category": "Other"
     },
     "RESULT_FILE": {
       "type": "string",
