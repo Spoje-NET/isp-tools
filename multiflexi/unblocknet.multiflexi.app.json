@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/VitexSoftware/php-vitexsoftware-multiflexi-core/refs/heads/main/multiflexi.app.schema.json",
+  "$schema": "https://multiflexi.eu/schema/application.json",
   "schemaVersion": "3.4.0",
   "uuid": "2a7d8e9f-1c3e-4f2a-b7e9-8d0f2a3b4c5d",
   "version": "1.0.0",
@@ -86,6 +86,56 @@
       "defval": "https://demo.flexibee.eu:5434",
       "required": true,
       "category": "API"
+    },
+    "SVNUSER": {
+      "type": "string",
+      "description": {
+        "en": "SVN user name used to commit network configuration changes",
+        "cs": "Uživatelské jméno do SVN pro zápis změn síťové konfigurace"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNPASS": {
+      "type": "password",
+      "description": {
+        "en": "SVN password",
+        "cs": "Heslo do SVN"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNURL": {
+      "type": "url",
+      "description": {
+        "en": "SVN repository URL with network configuration",
+        "cs": "URL SVN repozitáře se síťovou konfigurací"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "SVNBIN": {
+      "type": "file-path",
+      "description": {
+        "en": "Path to the svn client binary",
+        "cs": "Cesta ke spustitelnému souboru svn klienta"
+      },
+      "defval": "/usr/bin/svn",
+      "required": true,
+      "category": "Other"
+    },
+    "LOGFILE": {
+      "type": "file-path",
+      "description": {
+        "en": "Path to the log file",
+        "cs": "Cesta k souboru s logem"
+      },
+      "defval": "",
+      "required": true,
+      "category": "Other"
     },
     "RESULT_FILE": {
       "type": "string",
