@@ -55,6 +55,15 @@ if (Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
+$scope = $customerCode !== '' ? 'customer '.$customerCode : 'all customers';
+$deblocker->addStatusMessage(sprintf(
+    'Starting block run (scope: %s). Customers with label %s are blocked (speed set to 0 on all their IPs), except customers with label %s or %s.',
+    $scope,
+    Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO'),
+    $labelVip,
+    $labelNoDisconnect,
+), 'info');
+
 $addresses = $deblocker->getBlockedCustomers($customerCode !== '' ? $customerCode : null);
 $report['metrics']['disconnected_total'] = \count($addresses);
 
@@ -64,7 +73,7 @@ foreach ($addresses as $kod => $address) {
     $labels = \AbraFlexi\Stitek::listToArray((string) ($address['stitky'] ?? ''));
 
     if (\array_key_exists($labelVip, $labels)) {
-        $deblocker->addStatusMessage($kod.' '.($address['nazev'] ?? '').' '._('VIP'), 'warning');
+        $deblocker->addStatusMessage(sprintf('Customer %s %s: skipped, VIP label %s is set', $kod, $address['nazev'] ?? '', $labelVip), 'warning');
         ++$report['metrics']['vip_skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'vip_skipped'];
 
@@ -72,13 +81,14 @@ foreach ($addresses as $kod => $address) {
     }
 
     if (\array_key_exists($labelNoDisconnect, $labels)) {
-        $deblocker->addStatusMessage($kod.' '.($address['nazev'] ?? '').' '._('NODISCONNECT'), 'warning');
+        $deblocker->addStatusMessage(sprintf('Customer %s %s: skipped, label %s (no disconnect) is set', $kod, $address['nazev'] ?? '', $labelNoDisconnect), 'warning');
         ++$report['metrics']['nodisconnect_skipped'];
         $report['customers'][] = ['kod' => $kod, 'action' => 'nodisconnect_skipped'];
 
         continue;
     }
 
+    $deblocker->addStatusMessage(sprintf('Customer %s %s: no exclusion label, will be blocked', $kod, $address['nazev'] ?? ''), 'info');
     $toBlock[] = (string) $kod;
 }
 
@@ -98,11 +108,14 @@ foreach ($deblocker->blockCustomers($toBlock) as $kod => $result) {
 
 $m = $report['metrics'];
 $report['message'] = sprintf(
-    'Blocked %d of %d disconnected customers. Skipped: %d VIP, %d NODISCONNECT. No IP: %d. Errors: %d.',
-    $m['blocked'],
+    'Finished (scope: %s). Of %d customers with label %s: skipped %d VIP and %d NODISCONNECT, %d to block. Blocked %d, no IP in network backend %d, errors %d.',
+    $scope,
     $m['disconnected_total'],
+    Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO'),
     $m['vip_skipped'],
     $m['nodisconnect_skipped'],
+    \count($toBlock),
+    $m['blocked'],
     $m['no_ip'],
     $m['errors'],
 );

@@ -61,12 +61,23 @@ $report = [
 // ------------------------------------------------------------------
 // 1. Customers with 3rd reminder label
 // ------------------------------------------------------------------
+$inetContractType = (string) Shared::cfg('INET_CONTRACT_TYPE', '');
 $customer = new \AbraFlexi\Bricks\Customer();
+$customer->addStatusMessage(sprintf(
+    'Starting mark run. Customer is marked %s when it has label %s, an active %s contract, and neither label %s, %s nor %s.',
+    $labelDisconnected,
+    $labelThirdReminder,
+    $inetContractType !== '' ? 'internet ('.$inetContractType.')' : 'any',
+    $labelDisconnected,
+    $labelVip,
+    $labelNoDisconnect,
+), 'info');
+
 $candidates = $customer->getCustomerList(['stitky' => $labelThirdReminder, 'limit' => 0]);
-$customer->addStatusMessage(\count($candidates).' customers with label '.$labelThirdReminder, 'info');
+$customer->addStatusMessage(sprintf('Found %d customers with label %s (third reminder sent)', \count($candidates), $labelThirdReminder), 'info');
 
 if (empty($candidates)) {
-    $report['message'] = 'No customers with '.$labelThirdReminder.' label found.';
+    $report['message'] = sprintf('No customers with label %s found. Nothing to mark.', $labelThirdReminder);
     $customer->addStatusMessage($report['message'], 'success');
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
@@ -94,7 +105,11 @@ foreach ($allContracts as $contract) {
     }
 }
 
-$smlouvaEvidence->addStatusMessage(\count($customersWithContracts).' customers with active contracts', 'info');
+$smlouvaEvidence->addStatusMessage(sprintf(
+    'Found %d customers with active contracts (stavSml AKTIVNI, type %s)',
+    \count($customersWithContracts),
+    $inetContractType !== '' ? $inetContractType : 'any',
+), 'info');
 
 // ------------------------------------------------------------------
 // 3. Mark eligible customers
@@ -106,9 +121,11 @@ foreach ($candidates as $kod => $address) {
     $labels = \AbraFlexi\Stitek::listToArray((string) ($address['stitky'] ?? ''));
 
     // Skip if already marked, VIP, or explicitly excluded
+    $name = $address['nazev'] ?? '';
+
     if (\array_key_exists($labelDisconnected, $labels)) {
         ++$report['metrics']['skipped'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' already marked', 'warning');
+        $addresser->addStatusMessage(sprintf('Customer %s %s: skipped, label %s is already set', $kod, $name, $labelDisconnected), 'warning');
         $report['customers'][] = ['kod' => $kod, 'action' => 'already_marked'];
 
         continue;
@@ -116,7 +133,7 @@ foreach ($candidates as $kod => $address) {
 
     if (\array_key_exists($labelVip, $labels)) {
         ++$report['metrics']['skipped'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' VIP', 'warning');
+        $addresser->addStatusMessage(sprintf('Customer %s %s: skipped, VIP label %s is set', $kod, $name, $labelVip), 'warning');
         $report['customers'][] = ['kod' => $kod, 'action' => 'vip_skipped'];
 
         continue;
@@ -124,7 +141,7 @@ foreach ($candidates as $kod => $address) {
 
     if (\array_key_exists($labelNoDisconnect, $labels)) {
         ++$report['metrics']['skipped'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' NODISCONNECT', 'warning');
+        $addresser->addStatusMessage(sprintf('Customer %s %s: skipped, label %s (no disconnect) is set', $kod, $name, $labelNoDisconnect), 'warning');
         $report['customers'][] = ['kod' => $kod, 'action' => 'nodisconnect_skipped'];
 
         continue;
@@ -133,7 +150,12 @@ foreach ($candidates as $kod => $address) {
     // Skip if no internet service contract
     if (!isset($customersWithContracts[$kod])) {
         ++$report['metrics']['skipped'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' no active contract', 'warning');
+        $addresser->addStatusMessage(sprintf(
+            'Customer %s %s: skipped, no active contract of type %s in AbraFlexi',
+            $kod,
+            $name,
+            $inetContractType !== '' ? $inetContractType : 'any',
+        ), 'warning');
         $report['customers'][] = ['kod' => $kod, 'action' => 'no_contract_skipped'];
 
         continue;
@@ -149,12 +171,12 @@ foreach ($candidates as $kod => $address) {
 
     if ($saved) {
         ++$report['metrics']['marked'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' marked '.$labelDisconnected, 'success');
+        $addresser->addStatusMessage(sprintf('Customer %s %s: marked %s (has %s, active contract, no exclusion label)', $kod, $name, $labelDisconnected, $labelThirdReminder), 'success');
         $report['customers'][] = ['kod' => $kod, 'nazev' => $address['nazev'] ?? '', 'action' => 'marked_for_disconnection'];
     } else {
         $report['exitcode'] = 1;
         ++$report['metrics']['errors'];
-        $addresser->addStatusMessage($kod.' '.($address['nazev'] ?? '').' error setting label', 'error');
+        $addresser->addStatusMessage(sprintf('Customer %s %s: failed to set label %s in AbraFlexi', $kod, $name, $labelDisconnected), 'error');
         $report['customers'][] = ['kod' => $kod, 'action' => 'error_setting_label'];
     }
 }
@@ -163,7 +185,15 @@ foreach ($candidates as $kod => $address) {
 // 4. Report
 // ------------------------------------------------------------------
 $m = $report['metrics'];
-$report['message'] = "Checked: {$m['checked']}, Marked: {$m['marked']}, Skipped: {$m['skipped']}, Errors: {$m['errors']}";
+$report['message'] = sprintf(
+    'Checked %d customers with label %s: marked %d with %s, skipped %d (already marked, VIP, NODISCONNECT or no contract), errors %d.',
+    $m['checked'],
+    $labelThirdReminder,
+    $m['marked'],
+    $labelDisconnected,
+    $m['skipped'],
+    $m['errors'],
+);
 
 if ($report['exitcode'] !== 0) {
     $report['status'] = 'warning';

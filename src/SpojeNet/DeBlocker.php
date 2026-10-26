@@ -94,7 +94,12 @@ class DeBlocker extends \Ease\Sand
         }
 
         $adresses = $this->customer->getCustomerList($conditions);
-        $this->addStatusMessage(\count($adresses).' '.sprintf(_('customers with label %s'), $diconnectedLabel));
+        $this->addStatusMessage(sprintf(
+            'Found %d customers with label %s (AbraFlexi address records, scope: %s)',
+            \count($adresses),
+            $diconnectedLabel,
+            empty($customer) ? 'all customers' : 'customer '.$customer,
+        ));
 
         return $adresses;
     }
@@ -147,7 +152,12 @@ class DeBlocker extends \Ease\Sand
             $debtors[$firmCode]['due'] += (float) $invoice['zbyvaUhradit'];
         }
 
-        $this->addStatusMessage(\count($debtors).' '._('customers with unpaid overdue invoices'));
+        $this->addStatusMessage(sprintf(
+            'Found %d customers with unpaid overdue invoices (FAKTURA/ZALOHA, not storno, not fully paid, due before %s, scope: %s)',
+            \count($debtors),
+            date('Y-m-d'),
+            empty($customer) ? 'all customers' : 'customer '.$customer,
+        ));
 
         return $debtors;
     }
@@ -168,16 +178,16 @@ class DeBlocker extends \Ease\Sand
             $result = ['ips' => $ips, 'blocked' => 0, 'failed' => 0];
 
             if ($ips === []) {
-                $this->addStatusMessage(sprintf(_('No IP addresses found for customer %s'), $code), 'warning');
+                $this->addStatusMessage(sprintf('Customer %s: no IP addresses in the network backend, nothing to block', $code), 'warning');
             }
 
             foreach ($ips as $ip) {
                 if ($this->adapter->blockIp($ip)) {
                     ++$result['blocked'];
-                    $this->addStatusMessage(sprintf(_('Blocked IP %s of customer %s'), $ip, $code), 'success');
+                    $this->addStatusMessage(sprintf('Customer %s: blocked IP %s (speed set to 0)', $code, $ip), 'success');
                 } else {
                     ++$result['failed'];
-                    $this->addStatusMessage(sprintf(_('Failed to block IP %s of customer %s'), $ip, $code), 'error');
+                    $this->addStatusMessage(sprintf('Customer %s: failed to block IP %s (network backend reported an error)', $code, $ip), 'error');
                 }
             }
 
@@ -207,16 +217,16 @@ class DeBlocker extends \Ease\Sand
             $result = ['ips' => $ips, 'unblocked' => 0, 'failed' => 0];
 
             if ($ips === []) {
-                $this->addStatusMessage(sprintf(_('No IP addresses found for customer %s'), $code), 'warning');
+                $this->addStatusMessage(sprintf('Customer %s: no IP addresses in the network backend, nothing to unblock', $code), 'warning');
             }
 
             foreach ($ips as $ip) {
                 if ($this->adapter->unblockIp($ip, $fallbackSpeed)) {
                     ++$result['unblocked'];
-                    $this->addStatusMessage(sprintf(_('Unblocked IP %s of customer %s'), $ip, $code), 'success');
+                    $this->addStatusMessage(sprintf('Customer %s: unblocked IP %s (original speed restored, fallback %d if none stored)', $code, $ip, $fallbackSpeed), 'success');
                 } else {
                     ++$result['failed'];
-                    $this->addStatusMessage(sprintf(_('Failed to unblock IP %s of customer %s'), $ip, $code), 'error');
+                    $this->addStatusMessage(sprintf('Customer %s: failed to unblock IP %s (network backend reported an error)', $code, $ip), 'error');
                 }
             }
 
@@ -241,12 +251,14 @@ class DeBlocker extends \Ease\Sand
         $labels = \AbraFlexi\Stitek::listToArray((string) $addresser->getDataValue('stitky'));
 
         if (!\array_key_exists($diconnectedLabel, $labels)) {
+            $this->addStatusMessage(sprintf('Customer %s: label %s already absent, nothing to remove', $code, $diconnectedLabel), 'debug');
+
             return true;
         }
 
         $removed = $addresser->unsetLabel($diconnectedLabel);
         $this->addStatusMessage(
-            sprintf(_('Label %s removal for customer %s'), $diconnectedLabel, $code),
+            sprintf('Customer %s: %s label %s in AbraFlexi', $code, $removed ? 'removed' : 'failed to remove', $diconnectedLabel),
             $removed ? 'success' : 'error',
         );
 

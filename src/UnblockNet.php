@@ -55,11 +55,19 @@ if (Shared::cfg('APP_DEBUG', false)) {
     $deblocker->logBanner();
 }
 
+$scope = $customerCode !== '' ? 'customer '.$customerCode : 'all customers';
+$deblocker->addStatusMessage(sprintf(
+    'Starting unblock run (scope: %s). Customers with label %s are unblocked only when they have no unpaid overdue invoices (FAKTURA/ZALOHA) in AbraFlexi. Fallback speed: %d.',
+    $scope,
+    Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO'),
+    (int) Shared::cfg('DEFAULT_SPEED', 0),
+), 'info');
+
 $disconnected = $deblocker->getBlockedCustomers($customerCode !== '' ? $customerCode : null);
 $report['metrics']['disconnected_total'] = \count($disconnected);
 
 if (empty($disconnected)) {
-    $report['message'] = 'No disconnected customers found.';
+    $report['message'] = sprintf('No customers with label %s found (scope: %s). Nothing to unblock.', Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO'), $scope);
     $deblocker->addStatusMessage($report['message'], 'success');
     file_put_contents($destination, json_encode($report, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE));
 
@@ -71,10 +79,18 @@ $debtors = $deblocker->getInvoicesStatus($customerCode !== '' ? $customerCode : 
 $eligible = [];
 
 foreach ($disconnected as $kod => $address) {
+    $name = $address['nazev'] ?? '';
+
     if (\array_key_exists($kod, $debtors)) {
         ++$report['metrics']['still_owing'];
         $deblocker->addStatusMessage(
-            sprintf('Customer %s still owes %s (%d unpaid invoices)', $kod, $debtors[$kod]['due'], $debtors[$kod]['count']),
+            sprintf(
+                'Customer %s %s: kept blocked, %d unpaid overdue invoice(s) with total due %.2f',
+                $kod,
+                $name,
+                $debtors[$kod]['count'],
+                $debtors[$kod]['due'],
+            ),
             'warning',
         );
         $report['customers'][] = [
@@ -87,6 +103,7 @@ foreach ($disconnected as $kod => $address) {
         continue;
     }
 
+    $deblocker->addStatusMessage(sprintf('Customer %s %s: no unpaid overdue invoices, eligible for unblock', $kod, $name), 'info');
     $eligible[] = (string) $kod;
 }
 
@@ -121,12 +138,15 @@ foreach ($results as $kod => $result) {
 
 $m = $report['metrics'];
 $report['message'] = sprintf(
-    'Unblocked %d of %d disconnected customers. Still owing: %d. Labels cleared: %d. No IP: %d. Errors: %d.',
-    $m['unblocked'],
+    'Finished (scope: %s). Of %d customers with label %s: %d kept blocked (unpaid invoices), %d eligible. Unblocked %d, no IP in network backend %d (label cleared anyway), label cleared %d, errors %d.',
+    $scope,
     $m['disconnected_total'],
+    Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO'),
     $m['still_owing'],
-    $m['labels_cleared'],
+    \count($eligible),
+    $m['unblocked'],
     $m['no_ip'],
+    $m['labels_cleared'],
     $m['errors'],
 );
 
