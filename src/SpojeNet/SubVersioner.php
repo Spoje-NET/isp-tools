@@ -22,6 +22,10 @@ namespace SpojeNet;
  */
 class SubVersioner implements NetworkBackendInterface
 {
+    /**
+     * Comment token marking a disconnected customer; the only blocking marker the hosts file supports.
+     */
+    private const DISCONNECTED_TOKEN = 'dashboard-odpojen';
     private ?string $svnUser;
     private ?string $svnPass;
     private ?string $svnUrl;
@@ -67,7 +71,7 @@ class SubVersioner implements NetworkBackendInterface
     }
 
     /**
-     * Block IP by setting speed to 0.
+     * Block IP by adding the dashboard-odpojen token to its comment.
      */
     public function blockIp(string $ip): bool
     {
@@ -84,22 +88,12 @@ class SubVersioner implements NetworkBackendInterface
                 $keep = true;
 
                 if ($line !== '' && $line[0] !== '#') {
-                    $fields = explode("\t", $line);
-
-                    if (\count($fields) > 0 && trim($fields[0]) === $ip) {
+                    if (self::lineIp($line) === $ip) {
                         $commentParts = explode('#', $line, 2);
 
-                        if (\count($commentParts) > 1 && preg_match('/\bspeed=0\b/', $commentParts[1]) !== 1) {
-                            // Preserve the original speed so unblockIp can restore it later
-                            $origSpeed = preg_match('/\bspeed=(\d+)\b/', $commentParts[1], $speedMatch) ? $speedMatch[1] : null;
-
-                            // Modify comment to speed=0, remove dashboard parts
-                            $modifiedComment = preg_replace('/\b(?:speed|orig)=\d+\b/', '', $commentParts[1]);
-                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', (string) $modifiedComment);
-                            $modifiedComment = trim($modifiedComment);
-                            $newLine = $commentParts[0].'# speed=0'
-                                .($origSpeed === null ? '' : ' orig='.$origSpeed)
-                                .($modifiedComment === '' ? '' : ' '.$modifiedComment);
+                        if (\count($commentParts) > 1 && !str_contains($commentParts[1], self::DISCONNECTED_TOKEN)) {
+                            $comment = trim($commentParts[1]);
+                            $newLine = $commentParts[0].'#'.self::DISCONNECTED_TOKEN.($comment === '' ? '' : ' '.$comment);
                             $newContent .= $newLine."\n";
                             $keep = false;
                         }
@@ -125,12 +119,15 @@ class SubVersioner implements NetworkBackendInterface
     }
 
     /**
-     * Unblock IP by setting speed to given value.
+     * Unblock IP by removing the dashboard-odpojen token from its comment.
+     *
+     * The speed is defined by the tariff tokens in the line, which are left untouched,
+     * so $speed is not needed here and is only kept to satisfy NetworkBackendInterface.
      */
     public function unblockIp(string $ip, int $speed): bool
     {
         try {
-            $this->log('unblock requested for IP '.$ip.' to speed '.$speed);
+            $this->log('unblock requested for IP '.$ip);
             $this->checkoutRepo();
             $hostsFile = $this->tempDir.'/hosts';
             $tempFile = $this->tempDir.'/tmpnewhosts';
@@ -142,22 +139,12 @@ class SubVersioner implements NetworkBackendInterface
                 $keep = true;
 
                 if ($line !== '' && $line[0] !== '#') {
-                    $fields = explode("\t", $line);
-
-                    if (\count($fields) > 0 && trim($fields[0]) === $ip) {
+                    if (self::lineIp($line) === $ip) {
                         $commentParts = explode('#', $line, 2);
 
-                        if (\count($commentParts) > 1) {
-                            // Restore the speed recorded by blockIp, fall back to given value
-                            $restoreSpeed = preg_match('/\borig=(\d+)\b/', $commentParts[1], $origMatch) ? (int) $origMatch[1] : $speed;
-
-                            // Modify comment to restored speed, remove dashboard parts
-                            $modifiedComment = preg_replace('/\b(?:speed|orig)=\d+\b/', '', $commentParts[1]);
-                            $modifiedComment = str_replace(['dashboard-neplatic', 'dashboard-smlouva', '-odpojen', 'dashboard'], '', (string) $modifiedComment);
-                            $modifiedComment = trim($modifiedComment);
-                            $newLine = $commentParts[0].'#'
-                                .($restoreSpeed > 0 ? ' speed='.$restoreSpeed : '')
-                                .($modifiedComment === '' ? '' : ' '.$modifiedComment);
+                        if (\count($commentParts) > 1 && str_contains($commentParts[1], self::DISCONNECTED_TOKEN)) {
+                            $comment = trim(str_replace(self::DISCONNECTED_TOKEN, '', $commentParts[1]));
+                            $newLine = $commentParts[0].'#'.($comment === '' ? '' : ' '.$comment);
                             $newContent .= $newLine."\n";
                             $keep = false;
                         }
@@ -322,6 +309,17 @@ class SubVersioner implements NetworkBackendInterface
         }
 
         return $errors;
+    }
+
+    /**
+     * IP address in the first column of a hosts line.
+     *
+     * The hosts file is written with tabs between the columns, but some lines
+     * use spaces instead, so any run of whitespace is accepted as separator.
+     */
+    private static function lineIp(string $line): ?string
+    {
+        return preg_match('/^\s*(\S+)/', $line, $match) === 1 ? $match[1] : null;
     }
 
     private function checkoutRepo(): void

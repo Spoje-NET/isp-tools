@@ -84,37 +84,30 @@ class SubVersionerTest extends TestCase
         $this->assertInstanceOf(\SpojeNet\NetworkBackendInterface::class, new SubVersioner($this->workingDir));
     }
 
-    public function testBlockPreservesOriginalSpeedAndUnblockRestoresIt(): void
+    public function testBlockAddsDisconnectedTokenAndUnblockRemovesIt(): void
     {
         $subversioner = $this->makeSubVersioner();
 
         $this->assertTrue($subversioner->blockIp('10.0.0.1'));
         $blocked = $this->hostsLine('10.0.0.1');
-        $this->assertStringContainsString('# speed=0 orig=512', $blocked);
-        $this->assertStringContainsString('{code:TEST1}', $blocked);
+        $this->assertStringEndsWith('#dashboard-odpojen {code:TEST1}', $blocked);
+        $this->assertStringNotContainsString('speed=', $blocked);
 
-        // fallback speed 100 must lose against the recorded orig=512
         $this->assertTrue($subversioner->unblockIp('10.0.0.1', 100));
         $unblocked = $this->hostsLine('10.0.0.1');
-        $this->assertStringContainsString('speed=512', $unblocked);
-        $this->assertStringNotContainsString('orig=', $unblocked);
+        $this->assertStringNotContainsString('dashboard-odpojen', $unblocked);
+        $this->assertStringContainsString('{code:TEST1}', $unblocked);
+        $this->assertStringNotContainsString('speed=', $unblocked);
     }
 
-    public function testBlockAndUnblockLineWithoutPriorSpeed(): void
+    public function testBlockKeepsTariffTokens(): void
     {
         $subversioner = $this->makeSubVersioner();
 
         $this->assertTrue($subversioner->blockIp('10.0.0.2'));
         $blocked = $this->hostsLine('10.0.0.2');
-        $this->assertStringContainsString('# speed=0', $blocked);
-        $this->assertStringNotContainsString('orig=', $blocked);
+        $this->assertStringContainsString('dashboard-odpojen', $blocked);
         $this->assertStringContainsString('BREVNOVNETBASIC', $blocked);
-
-        // no orig token and fallback 0 -> no speed token at all
-        $this->assertTrue($subversioner->unblockIp('10.0.0.2', 0));
-        $unblocked = $this->hostsLine('10.0.0.2');
-        $this->assertStringNotContainsString('speed=', $unblocked);
-        $this->assertStringContainsString('BREVNOVNETBASIC', $unblocked);
     }
 
     public function testBlockIsIdempotent(): void
@@ -124,17 +117,23 @@ class SubVersionerTest extends TestCase
         $this->assertTrue($subversioner->blockIp('10.0.0.1'));
         $this->assertTrue($subversioner->blockIp('10.0.0.1'));
 
-        $blocked = $this->hostsLine('10.0.0.1');
-        $this->assertSame(1, substr_count($blocked, 'speed=0'));
-        $this->assertStringContainsString('orig=512', $blocked);
+        $this->assertSame(1, substr_count($this->hostsLine('10.0.0.1'), 'dashboard-odpojen'));
     }
 
-    public function testUnblockUsesFallbackSpeedWithoutOrigToken(): void
+    public function testUnblockLeavesLineWithoutTokenUnchanged(): void
     {
         $subversioner = $this->makeSubVersioner();
 
-        $this->assertTrue($subversioner->unblockIp('10.0.0.3', 200));
-        $this->assertStringContainsString('speed=200', $this->hostsLine('10.0.0.3'));
+        $this->assertTrue($subversioner->unblockIp('10.0.0.2', 200));
+        $this->assertSame("10.0.0.2\thost2\t\t#BREVNOVNETBASIC {code:TEST2}", $this->hostsLine('10.0.0.2'));
+    }
+
+    public function testBlockMatchesIpSeparatedBySpaces(): void
+    {
+        $subversioner = $this->makeSubVersioner();
+
+        $this->assertTrue($subversioner->blockIp('10.0.0.5'));
+        $this->assertStringContainsString("10.0.0.5 host5\t\t#dashboard-odpojen {code:TEST5}", $this->hostsLine('10.0.0.5'));
     }
 
     public function testGetCustomerIPsPrefersExactCodeToken(): void
@@ -160,10 +159,11 @@ class SubVersionerTest extends TestCase
 
         $hosts = [
             '# test fixture',
-            "10.0.0.1\thost1\t\t#speed=512 {code:TEST1}",
+            "10.0.0.1\thost1\t\t#{code:TEST1}",
             "10.0.0.2\thost2\t\t#BREVNOVNETBASIC {code:TEST2}",
-            "10.0.0.3\thost3\t\t#speed=0 {code:TEST3}",
+            "10.0.0.3\thost3\t\t#dashboard-odpojen {code:TEST3}",
             "10.0.0.4\thost4\t\t#plaintextonly TEST1 old note",
+            "10.0.0.5 host5\t\t#{code:TEST5}",
         ];
         file_put_contents($importDir.'/hosts', implode("\n", $hosts)."\n");
 
@@ -190,7 +190,7 @@ class SubVersionerTest extends TestCase
         $this->assertSame(0, $exitCode, 'svn cat failed');
 
         foreach ($lines as $line) {
-            if (str_starts_with($line, $ip."\t")) {
+            if (preg_match('/^'.preg_quote($ip, '/').'\s/', $line) === 1) {
                 return $line;
             }
         }
