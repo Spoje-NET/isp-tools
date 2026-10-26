@@ -53,7 +53,7 @@ class DeBlockerTest extends TestCase
     /**
      * @return array<string, array{string, ?string}>
      */
-    public static function contractTypeProvider(): array
+    public static function contractTypeProvider(): iterable
     {
         return [
             'empty matches any type' => ['', null],

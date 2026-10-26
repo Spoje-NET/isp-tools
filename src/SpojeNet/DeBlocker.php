@@ -69,7 +69,7 @@ class DeBlocker extends \Ease\Sand
 
         foreach ((array) $contract->getColumnsFromAbraFlexi(['firma', 'kod', 'stavSml', 'typSml'], self::activeContractConditions((string) \Ease\Shared::cfg('INET_CONTRACT_TYPE', ''))) as $contractData) {
             if (!empty($contractData['firma'])) {
-                $firmCode = \is_array($contractData['firma']) ? ($contractData['firma']['kod'] ?? '') : \AbraFlexi\Functions::uncode((string) $contractData['firma']);
+                $firmCode = \is_array($contractData['firma']) ? ($contractData['firma']['kod'] ?? '') : \AbraFlexi\Code::strip((string) $contractData['firma']);
                 $customersWithContracts[$firmCode] = true;
             }
         }
@@ -80,7 +80,7 @@ class DeBlocker extends \Ease\Sand
     /**
      * Customers currently marked for disconnection.
      *
-     * @param string|null $customer Optional customer code or ID to query for a single customer
+     * @param null|string $customer Optional customer code or ID to query for a single customer
      *
      * @return array<string, array<string, mixed>> address records keyed by customer code
      */
@@ -90,11 +90,11 @@ class DeBlocker extends \Ease\Sand
         $conditions = ['stitky' => $diconnectedLabel, 'limit' => 0];
 
         if (!empty($customer)) {
-            $conditions['id'] = is_numeric($customer) ? (int) $customer : \AbraFlexi\Functions::code($customer);
+            $conditions['id'] = is_numeric($customer) ? (int) $customer : \AbraFlexi\Code::ensure($customer);
         }
 
         $adresses = $this->customer->getCustomerList($conditions);
-        $this->addStatusMessage(sprintf(
+        $this->addStatusMessage(\sprintf(
             'Found %d customers with label %s (AbraFlexi address records, scope: %s)',
             \count($adresses),
             $diconnectedLabel,
@@ -107,7 +107,7 @@ class DeBlocker extends \Ease\Sand
     /**
      * Customers with unpaid overdue issued invoices.
      *
-     * @param string|null $customer Optional customer code or ID to query for a single customer
+     * @param null|string $customer Optional customer code or ID to query for a single customer
      *
      * @return array<string, array{count: int, due: float}> keyed by customer (firma) code
      */
@@ -138,7 +138,7 @@ class DeBlocker extends \Ease\Sand
                 continue;
             }
 
-            $firmCode = \is_array($invoice['firma']) ? ($invoice['firma']['kod'] ?? '') : \AbraFlexi\Functions::uncode((string) $invoice['firma']);
+            $firmCode = \is_array($invoice['firma']) ? ($invoice['firma']['kod'] ?? '') : \AbraFlexi\Code::strip((string) $invoice['firma']);
 
             if ($firmCode === '') {
                 continue;
@@ -152,7 +152,7 @@ class DeBlocker extends \Ease\Sand
             $debtors[$firmCode]['due'] += (float) $invoice['zbyvaUhradit'];
         }
 
-        $this->addStatusMessage(sprintf(
+        $this->addStatusMessage(\sprintf(
             'Found %d customers with unpaid overdue invoices (FAKTURA/ZALOHA, not storno, not fully paid, due before %s, scope: %s)',
             \count($debtors),
             date('Y-m-d'),
@@ -178,16 +178,16 @@ class DeBlocker extends \Ease\Sand
             $result = ['ips' => $ips, 'blocked' => 0, 'failed' => 0];
 
             if ($ips === []) {
-                $this->addStatusMessage(sprintf('Customer %s: no IP addresses in the network backend, nothing to block', $code), 'warning');
+                $this->addStatusMessage(\sprintf('Customer %s: no IP addresses in the network backend, nothing to block', $code), 'warning');
             }
 
             foreach ($ips as $ip) {
                 if ($this->adapter->blockIp($ip)) {
                     ++$result['blocked'];
-                    $this->addStatusMessage(sprintf('Customer %s: blocked IP %s (speed set to 0)', $code, $ip), 'success');
+                    $this->addStatusMessage(\sprintf('Customer %s: blocked IP %s (speed set to 0)', $code, $ip), 'success');
                 } else {
                     ++$result['failed'];
-                    $this->addStatusMessage(sprintf('Customer %s: failed to block IP %s (network backend reported an error)', $code, $ip), 'error');
+                    $this->addStatusMessage(\sprintf('Customer %s: failed to block IP %s (network backend reported an error)', $code, $ip), 'error');
                 }
             }
 
@@ -217,16 +217,16 @@ class DeBlocker extends \Ease\Sand
             $result = ['ips' => $ips, 'unblocked' => 0, 'failed' => 0];
 
             if ($ips === []) {
-                $this->addStatusMessage(sprintf('Customer %s: no IP addresses in the network backend, nothing to unblock', $code), 'warning');
+                $this->addStatusMessage(\sprintf('Customer %s: no IP addresses in the network backend, nothing to unblock', $code), 'warning');
             }
 
             foreach ($ips as $ip) {
                 if ($this->adapter->unblockIp($ip, $fallbackSpeed)) {
                     ++$result['unblocked'];
-                    $this->addStatusMessage(sprintf('Customer %s: unblocked IP %s (original speed restored, fallback %d if none stored)', $code, $ip, $fallbackSpeed), 'success');
+                    $this->addStatusMessage(\sprintf('Customer %s: unblocked IP %s (original speed restored, fallback %d if none stored)', $code, $ip, $fallbackSpeed), 'success');
                 } else {
                     ++$result['failed'];
-                    $this->addStatusMessage(sprintf('Customer %s: failed to unblock IP %s (network backend reported an error)', $code, $ip), 'error');
+                    $this->addStatusMessage(\sprintf('Customer %s: failed to unblock IP %s (network backend reported an error)', $code, $ip), 'error');
                 }
             }
 
@@ -247,18 +247,18 @@ class DeBlocker extends \Ease\Sand
     public function removeDisconnectedLabel(string $code): bool
     {
         $diconnectedLabel = (string) \Ease\Shared::cfg('LABEL_DISCONNECTED', 'ODPOJENO');
-        $addresser = new \AbraFlexi\Adresar(\AbraFlexi\Functions::code($code), ['detail' => 'custom:kod,stitky']);
+        $addresser = new \AbraFlexi\Adresar(\AbraFlexi\Code::ensure($code), ['detail' => 'custom:kod,stitky']);
         $labels = \AbraFlexi\Stitek::listToArray((string) $addresser->getDataValue('stitky'));
 
         if (!\array_key_exists($diconnectedLabel, $labels)) {
-            $this->addStatusMessage(sprintf('Customer %s: label %s already absent, nothing to remove', $code, $diconnectedLabel), 'debug');
+            $this->addStatusMessage(\sprintf('Customer %s: label %s already absent, nothing to remove', $code, $diconnectedLabel), 'debug');
 
             return true;
         }
 
         $removed = $addresser->unsetLabel($diconnectedLabel);
         $this->addStatusMessage(
-            sprintf('Customer %s: %s label %s in AbraFlexi', $code, $removed ? 'removed' : 'failed to remove', $diconnectedLabel),
+            \sprintf('Customer %s: %s label %s in AbraFlexi', $code, $removed ? 'removed' : 'failed to remove', $diconnectedLabel),
             $removed ? 'success' : 'error',
         );
 
