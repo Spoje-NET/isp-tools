@@ -28,11 +28,11 @@ class NetBoxer implements NetworkBackendInterface
 
     public function __construct()
     {
-        $url = \Ease\Shared::cfg('NETBOXURL');
-        $token = \Ease\Shared::cfg('NETBOXTOKEN');
+        $url = \Ease\Shared::cfg('NETBOX_URL');
+        $token = \Ease\Shared::cfg('NETBOX_TOKEN');
 
         if (!$url || !$token) {
-            throw new \Exception('Missing required NetBox configuration. Please check NETBOXURL and NETBOXTOKEN in configuration.');
+            throw new \Exception('Missing required NetBox configuration. Please check NETBOX_URL and NETBOX_TOKEN in configuration.');
         }
 
         // Set environment variables for NetBox Client

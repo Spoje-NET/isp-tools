@@ -12,12 +12,14 @@
     "cs": "Zablokuje internet všem klientům kteří mají štítek ODPOJEN"
   },
   "requirements": [
-    "AbraFlexi"
+    "AbraFlexi",
+    "NetBox"
   ],
   "tags": [
     "AbraFlexi",
     "ISP",
-    "Network"
+    "Network",
+    "NetBox"
   ],
   "homepage": "https://github.com/Spoje-NET/isp-tools",
   "executable": "blocknet",
@@ -123,6 +125,26 @@
       "defval": "/usr/bin/svn",
       "required": true,
       "category": "Other"
+    },
+    "NETBOX_URL": {
+      "type": "url",
+      "description": {
+        "en": "NetBox instance base URL (from NetBox credential)",
+        "cs": "Základní URL instance NetBox (z NetBox credential)"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
+    },
+    "NETBOX_TOKEN": {
+      "type": "password",
+      "description": {
+        "en": "NetBox API token (from NetBox credential)",
+        "cs": "API token NetBox (z NetBox credential)"
+      },
+      "defval": "",
+      "required": true,
+      "category": "API"
     },
     "LOGFILE": {
       "type": "file-path",

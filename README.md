@@ -207,8 +207,8 @@ a `speed=` value). Customer IPs are resolved preferably by the machine-readable
 
 #### NetBox API (Modern Backend)
 
-- `NETBOXURL` - NetBox server URL (e.g., `https://netbox.yourdomain.com`)
-- `NETBOXTOKEN` - NetBox API token for authentication
+- `NETBOX_URL` - NetBox server URL (e.g., `https://netbox.yourdomain.com`)
+- `NETBOX_TOKEN` - NetBox API token for authentication
 
 ## Usage
 
@@ -370,8 +370,8 @@ Add NetBox settings to your `.env` file:
 
 ```bash
 # NetBox API Configuration
-NETBOXURL=https://your-netbox-instance.com
-NETBOXTOKEN=your-api-token-here
+NETBOX_URL=https://your-netbox-instance.com
+NETBOX_TOKEN=your-api-token-here
 ```
 
 ### NetBox Setup

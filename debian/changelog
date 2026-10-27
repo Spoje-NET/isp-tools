@@ -10,8 +10,10 @@ isp-tools (1.1.5) UNRELEASED; urgency=medium
     AbraFlexi hook), the event rules as deployed, the sweep behaviour of
     BlockNet/UnblockNet and the rehearsal procedure; fix README.Debian
     autoloader paths
+  * blocknet/unblocknet: require NetBox credential prototype (NETBOX_URL,
+    NETBOX_TOKEN); multiflexi-isp-tools Recommends multiflexi-netbox
 
- -- Vítězslav Dvořák <info@vitexsoftware.cz>  Sat, 19 Sep 2026 12:40:00 +0200
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Tue, 27 Oct 2026 16:30:00 +0200
 
 isp-tools (1.1.4) stable; urgency=medium
 

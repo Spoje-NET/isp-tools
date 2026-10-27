@@ -29,13 +29,13 @@ class NetBoxerTest extends TestCase
     {
         // Backup original environment
         $this->originalEnv = [
-            'NETBOXURL' => getenv('NETBOXURL'),
-            'NETBOXTOKEN' => getenv('NETBOXTOKEN'),
+            'NETBOX_URL' => getenv('NETBOX_URL'),
+            'NETBOX_TOKEN' => getenv('NETBOX_TOKEN'),
         ];
 
         // Set test environment
-        putenv('NETBOXURL=https://test-netbox.example.com');
-        putenv('NETBOXTOKEN=test-token-123');
+        putenv('NETBOX_URL=https://test-netbox.example.com');
+        putenv('NETBOX_TOKEN=test-token-123');
     }
 
     protected function tearDown(): void
@@ -57,7 +57,7 @@ class NetBoxerTest extends TestCase
 
     public function testConstructorThrowsExceptionWithMissingUrl(): void
     {
-        putenv('NETBOXURL'); // Remove required config
+        putenv('NETBOX_URL'); // Remove required config
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Missing required NetBox configuration');
@@ -67,7 +67,7 @@ class NetBoxerTest extends TestCase
 
     public function testConstructorThrowsExceptionWithMissingToken(): void
     {
-        putenv('NETBOXTOKEN'); // Remove required config
+        putenv('NETBOX_TOKEN'); // Remove required config
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Missing required NetBox configuration');

@@ -30,9 +30,10 @@ Architecture: all
 Section: web
 Priority: optional
 Depends: multiflexi-cli, isp-tools
-Recommends: multiflexi-abraflexi-matcher
+Recommends: multiflexi-abraflexi-matcher, multiflexi-netbox
 Description: Add ISP Tools to MultiFlexi
  Install or update MultiFlexi application JSON definitions for
  ISP Tools (mark-defaulters, blocknet, unblocknet, payment confirmations)
  into MultiFlexi. Pipeline B payment matching uses the
  AbraFlexi Payment Matcher app from multiflexi-abraflexi-matcher.
+ NetBox credentials for the network backend come from multiflexi-netbox.
