@@ -14,8 +14,11 @@ isp-tools (1.1.5) UNRELEASED; urgency=medium
     NETBOX_TOKEN); multiflexi-isp-tools Recommends multiflexi-netbox
   * Depend on php-mkevenaar-netbox and load its Debian autoloader so
     SpojeNet\NetBoxer can use the packaged mkevenaar/netbox client
+  * Implement NetBoxer against NetBox flags.code / dashboard-odpojen,
+    add CompositeNetworkBackend, and select backend via NETWORK_BACKEND
+    (svn|netbox|composite) in blocknet/unblocknet
 
- -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 28 Oct 2026 11:10:00 +0200
+ -- Vítězslav Dvořák <info@vitexsoftware.cz>  Wed, 28 Oct 2026 12:30:00 +0200
 
 isp-tools (1.1.4) stable; urgency=medium
 

@@ -149,6 +149,16 @@
       "required": true,
       "category": "API"
     },
+    "NETWORK_BACKEND": {
+      "type": "string",
+      "description": {
+        "en": "Network backend: svn (default), netbox, or composite (SVN then NetBox dual-write)",
+        "cs": "Síťový backend: svn (výchozí), netbox, nebo composite (SVN a pak dual-write do NetBox)"
+      },
+      "defval": "svn",
+      "required": false,
+      "category": "Other"
+    },
     "LOGFILE": {
       "type": "file-path",
       "description": {

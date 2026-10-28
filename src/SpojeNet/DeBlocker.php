@@ -33,7 +33,27 @@ class DeBlocker extends \Ease\Sand
     {
         $this->setObjectName('Deblocker');
         $this->customer = $customer ?? new \AbraFlexi\Bricks\Customer();
-        $this->adapter = $adapter ?? new SubVersioner();
+        $this->adapter = $adapter ?? self::createDefaultAdapter();
+    }
+
+    /**
+     * Pick network backend from NETWORK_BACKEND (svn|netbox|composite).
+     *
+     * Default remains SubVersioner for production safety. `composite` dual-writes
+     * SVN then NetBox when both are configured.
+     */
+    public static function createDefaultAdapter(): NetworkBackendInterface
+    {
+        $backend = strtolower(trim((string) \Ease\Shared::cfg('NETWORK_BACKEND', 'svn')));
+
+        return match ($backend) {
+            'netbox' => new NetBoxer(),
+            'composite', 'both', 'svn+netbox', 'netbox+svn' => new CompositeNetworkBackend(
+                new SubVersioner(),
+                new NetBoxer(),
+            ),
+            default => new SubVersioner(),
+        };
     }
 
     /**

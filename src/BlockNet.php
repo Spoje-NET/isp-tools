@@ -29,10 +29,28 @@ use Ease\Shared;
  * network backend (SubVersioner by default).
  */
 $options = getopt('o::e::c::', ['output::', 'environment::', 'customer::']);
-Shared::init(
-    ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN', 'LOGFILE'],
-    \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : (\is_readable(\dirname(__DIR__).'/.env') ? \dirname(__DIR__).'/.env' : '')),
-);
+$envFile = \array_key_exists('environment', $options) ? $options['environment'] : (\array_key_exists('e', $options) ? $options['e'] : (\is_readable(\dirname(__DIR__).'/.env') ? \dirname(__DIR__).'/.env' : ''));
+$backend = strtolower(trim((string) (getenv('NETWORK_BACKEND') ?: '')));
+if ($backend === '' && \is_string($envFile) && $envFile !== '' && is_readable($envFile)) {
+    foreach (file($envFile, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_starts_with($line, 'NETWORK_BACKEND=')) {
+            continue;
+        }
+        $backend = strtolower(trim(trim(substr($line, \strlen('NETWORK_BACKEND='))), " \t\"'"));
+    }
+}
+if ($backend === '') {
+    $backend = 'svn';
+}
+$required = ['ABRAFLEXI_URL', 'ABRAFLEXI_LOGIN', 'ABRAFLEXI_PASSWORD', 'ABRAFLEXI_COMPANY', 'LOGFILE'];
+if (\in_array($backend, ['svn', 'composite', 'both', 'svn+netbox', 'netbox+svn'], true)) {
+    $required = array_merge($required, ['SVNUSER', 'SVNPASS', 'SVNURL', 'SVNBIN']);
+}
+if (\in_array($backend, ['netbox', 'composite', 'both', 'svn+netbox', 'netbox+svn'], true)) {
+    $required = array_merge($required, ['NETBOX_URL', 'NETBOX_TOKEN']);
+}
+Shared::init($required, $envFile);
 
 $destination = \array_key_exists('output', $options) ? $options['output'] : Shared::cfg('RESULT_FILE', 'php://stdout');
 $customerCode = \array_key_exists('customer', $options) ? (string) $options['customer'] : (\array_key_exists('c', $options) ? (string) $options['c'] : (string) Shared::cfg('CUSTOMER', Shared::cfg('ABRAFLEXI_CUSTOMER', '')));
