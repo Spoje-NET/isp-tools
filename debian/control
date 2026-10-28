@@ -11,7 +11,7 @@ Vcs-Browser: https://github.com/Spoje-NET/isp-tools
 
 Package: isp-tools
 Architecture: all
-Depends: ${misc:Depends}, php-cli, php-spojenet-abraflexi (>= 3.4), php-vitexsoftware-abraflexi-bricks
+Depends: ${misc:Depends}, php-cli, php-spojenet-abraflexi (>= 3.4), php-vitexsoftware-abraflexi-bricks, php-mkevenaar-netbox (>= 3.0)
 Recommends: subversion, abraflexi-matcher
 Description: ISP tools for AbraFlexi-based internet access management
  Utilities for managing internet customer disconnection/reconnection
@@ -23,7 +23,8 @@ Description: ISP tools for AbraFlexi-based internet access management
  isp-potvrzeni-prijeti-uhrady (payment confirmation with invoice PDF),
  isp-potvrzeni-prijeti-bankovni-platby (unmatched payment notification).
  Payment matching is provided by the abraflexi-matcher package
- (abraflexi-match-received-payment).
+ (abraflexi-match-received-payment). NetBox IPAM access uses
+ php-mkevenaar-netbox (mkevenaar/netbox PHP client).
 
 Package: multiflexi-isp-tools
 Architecture: all

@@ -5,6 +5,7 @@
 
 require_once '/usr/share/php/AbraFlexi/autoload.php';
 require_once '/usr/share/php/AbraFlexiBricks/autoload.php';
+require_once '/usr/share/php/mkevenaar/NetBox/autoload.php';
 
 spl_autoload_register(function (string $class): void {
     $prefix = 'SpojeNet\\';

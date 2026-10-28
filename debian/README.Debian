@@ -21,6 +21,11 @@ require_once '/usr/share/php/isp-tools/autoload.php';
 **Note:** This package does NOT ship `vendor/autoload.php` from Composer.
 Use the Debian autoloader instead for proper system integration.
 
+Runtime PHP library dependencies (also listed in `debian/control`) include
+`php-mkevenaar-netbox`, whose autoloader
+`/usr/share/php/mkevenaar/NetBox/autoload.php` is chained from the
+isp-tools Debian autoloader for `SpojeNet\NetBoxer`.
+
 MultiFlexi application definitions
 ----------------------------------
 
